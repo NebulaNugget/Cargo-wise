@@ -1,0 +1,17 @@
+name: cargowise_login_and_search
+description: Log into CargoWise and search for a booking
+steps:
+  - description: Login to CargoWise
+    tool: cargowise_login
+    parameters:
+      username: ${username}
+      password: ${password}
+      environment: ${environment}
+    output_key: login_result
+    abort_on_failure: true
+  
+  - description: Search for booking
+    tool: cargowise_search_booking
+    parameters:
+      booking_reference: ${booking_reference}
+    output_key: search_result
