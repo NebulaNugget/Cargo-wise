@@ -68,9 +68,18 @@ class BrowserSessionManager:
                     chrome_options.add_argument("--disable-gpu")
                     chrome_options.add_argument("--window-size=1280,720")
                     chrome_options.add_argument("--disable-extensions")
+
+                    # Use local ChromeDriver instead of downloading
+                    chromedriver_path = os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)), 
+                        "..", "..", "..", "drivers", "chromedriver.exe"
+                    )
                     
-                    # Install and setup ChromeDriver
-                    service = Service(ChromeDriverManager().install())
+                    # Create service with local ChromeDriver
+                    service = Service(executable_path=chromedriver_path)
+
+                    # # Install and setup ChromeDriver
+                    # service = Service(ChromeDriverManager().install())
                     
                     # Create the WebDriver
                     driver = webdriver.Chrome(service=service, options=chrome_options)

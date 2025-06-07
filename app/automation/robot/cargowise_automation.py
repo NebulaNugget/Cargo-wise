@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional
 import logging
 import base64
 import os
+from datetime import datetime 
 from .robot_driver import RobotSikuliDriver
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ class CargoWiseAutomation:
     def __init__(self, image_dir: str = "cargowise_images"):
         self.driver = RobotSikuliDriver(
     image_dir="cargowise_images",
-    timeout=120,
+    timeout=300,
     app_path="C:/Users/UK-PC/AppData/Roaming/Telegram Desktop/Telegram.exe"  # Path to CargoWise executable
 )
         self.image_dir = Path(image_dir)
