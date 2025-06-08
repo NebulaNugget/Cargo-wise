@@ -161,6 +161,8 @@ class CargoWiseLoginTool(Marc1Tool):
             })
             
             if password_result.get("status") != "SUCCESS":
+                # Clean up browser session before returning
+                await BrowserSessionManager.cleanup()
                 return {
                     "status": "FAILED",
                     "outputs": {},
@@ -191,7 +193,15 @@ class CargoWiseLoginTool(Marc1Tool):
                         "selector": "button.btn.btn-primary[type='submit']"
                     }
                 })
+            # Take a final screenshot before closing the browser
+            screenshot_base64 = None
+            try:
+                screenshot_base64 = await BrowserSessionManager.capture_screenshot("login_result")
+            except Exception as screenshot_error:
+                logger.warning(f"Failed to capture final screenshot: {str(screenshot_error)}")
             
+            # Clean up browser session before returning
+            await BrowserSessionManager.cleanup()
             return {
                 "status": "COMPLETED" if login_result.get("status") == "SUCCESS" else "FAILED",
                 "outputs": {
@@ -203,6 +213,11 @@ class CargoWiseLoginTool(Marc1Tool):
             }
         except Exception as e:
             logger.exception(f"Error during web login: {str(e)}")
+            # Ensure browser is cleaned up even if an exception occurs
+            try:
+                await BrowserSessionManager.cleanup()
+            except Exception as cleanup_error:
+                logger.warning(f"Error during browser cleanup: {str(cleanup_error)}")
             return {
                 "status": "FAILED",
                 "outputs": {},
