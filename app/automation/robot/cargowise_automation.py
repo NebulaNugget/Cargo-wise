@@ -15,7 +15,7 @@ class CargoWiseAutomation:
         self.driver = RobotSikuliDriver(
     image_dir="cargowise_images",
     timeout=300,
-    app_path="C:/Windows/notepad.exe"  # Path to CargoWise executable
+    app_path="C:/Users/UK-PC/AppData/Local/slack/slack.exe"  # Path to CargoWise executable
 )
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
@@ -36,21 +36,17 @@ Send Telegram Message
     [Documentation]    Send a message in Telegram (for testing)
     
     
-    # Click on the new file option
-    Click    ${IMAGE_DIR}/new_file.png
+    # Click on the dm section
+    Click    ${IMAGE_DIR}/dm_section.png
+
+    # Click on slack user
+    Click    ${IMAGE_DIR}/slack_user.png
    
     # Type a simple message
-    Input Text     ${IMAGE_DIR}/notepad_textfield.png     Hello, this is a test message from ${USERNAME}
+    Input Text     ${IMAGE_DIR}/message_box.png     Hello, this is a test message from ${USERNAME}
     
-    # Click the file button
-    Click    ${IMAGE_DIR}/file_button.png
-    sleep    3s
-
-    # Save the file
-    Click    ${IMAGE_DIR}/save_as_button.png
-    
-    # click enter button
-    Click    ${IMAGE_DIR}/save_dialog.png
+    # click send button
+    Click    ${IMAGE_DIR}/slack_send_button.png
     
     Log    Test message typed and saved successfully
     

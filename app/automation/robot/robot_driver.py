@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class RobotSikuliDriver:
     """Improved driver using Robot Framework + SikuliLibrary with timeout handling"""
     
-    def __init__(self, image_dir: str = "images", app_path: str="C:/Windows/notepad.exe", timeout: int = 60):
+    def __init__(self, image_dir: str = "images", app_path: str="C:/Users/UK-PC/AppData/Local/slack/slack.exe", timeout: int = 60):
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
         self.timeout = timeout  # Reduced default timeout
