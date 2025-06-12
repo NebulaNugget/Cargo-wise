@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class RobotSikuliDriver:
     """Improved driver using Robot Framework + SikuliLibrary with timeout handling"""
     
-    def __init__(self, image_dir: str = "images", app_path: str="C:/Users/UK-PC/AppData/Roaming/Telegram Desktop/Telegram.exe", timeout: int = 60):
+    def __init__(self, image_dir: str = "images", app_path: str="C:/Windows/notepad.exe", timeout: int = 60):
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
         self.timeout = timeout  # Reduced default timeout
@@ -297,14 +297,14 @@ Execute Task With Progress Logging
     Run Keyword If    not ${{status}}    Log To Console    WARNING: Task execution timed out or failed
     Run Keyword If    not ${{status}}    Log    WARNING: Task execution timed out or failed    WARN
     
-    [Return]    ${{status}}
+    RETURN    ${{status}}
 
 Run Keyword With Timeout
     [Arguments]    ${{keyword}}    ${{timeout}}    @{{args}}
     [Documentation]    Run a keyword with a timeout
     Log To Console    Running keyword with timeout: ${{keyword}} (${{timeout}})
     ${{result}}=    Run Keyword And Return Status    Wait Until Keyword Succeeds    ${{timeout}}    1s    ${{keyword}}    @{{args}}
-    [Return]    ${{result}}
+    Return    ${{result}}
 
 Run Sikuli Task
     [Documentation]    Execute the actual Sikuli task

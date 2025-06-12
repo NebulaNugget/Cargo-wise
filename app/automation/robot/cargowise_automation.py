@@ -15,7 +15,7 @@ class CargoWiseAutomation:
         self.driver = RobotSikuliDriver(
     image_dir="cargowise_images",
     timeout=300,
-    app_path="C:/Users/UK-PC/AppData/Roaming/Telegram Desktop/Telegram.exe"  # Path to CargoWise executable
+    app_path="C:/Windows/notepad.exe"  # Path to CargoWise executable
 )
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
@@ -36,24 +36,25 @@ Send Telegram Message
     [Documentation]    Send a message in Telegram (for testing)
     
     
+    # Click on the new file option
+    Click    ${IMAGE_DIR}/new_file.png
+   
+    # Type a simple message
+    Input Text     ${IMAGE_DIR}/notepad_textfield.png     Hello, this is a test message from ${USERNAME}
     
-    # Click on the contact/chat (using username as contact name)
-    Click    ${IMAGE_DIR}/user_logo.png
-    Sleep    1s
+    # Click the file button
+    Click    ${IMAGE_DIR}/file_button.png
+    sleep    3s
+
+    # Save the file
+    Click    ${IMAGE_DIR}/save_as_button.png
+    
+    # click enter button
+    Click    ${IMAGE_DIR}/save_dialog.png
+    
+    Log    Test message typed and saved successfully
     
     
-    # Click on message input field
-    Click    ${IMAGE_DIR}/text_box.png
-    Sleep    0.5s
-    
-    # Type the message (using password as message text)
-    Input Text    ${IMAGE_DIR}/text_box.png    This is an automated test message from sikulix robot-framework
-    Sleep    0.5s
-    
-    # Click send button
-    Click    ${IMAGE_DIR}/send_button.png
-    
-    Log    Message sent successfully to ${USERNAME}
 """
         
         variables = {

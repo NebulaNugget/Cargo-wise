@@ -62,6 +62,7 @@ class CargoWiseLoginTool(Marc1Tool):
         username_field = get_image_base64("username_field.png", image_dir)
         password_field = get_image_base64("password_field.png", image_dir)
         
+        
         # Execute login sequence
         click_tool = ClickImageTool()
         type_tool = TypeTextTool()
