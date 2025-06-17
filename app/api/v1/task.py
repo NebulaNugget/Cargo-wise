@@ -6,6 +6,8 @@ from app.db.repositories.task_repository import TaskRepository
 from app.core.marc1.execution_engine import ExecutionEngine
 from app.core.marc1.tool_registry import get_tool_registry
 from app.dependencies import get_db
+# Add this import at the top of the file
+from fastapi.encoders import jsonable_encoder
 from typing import Dict, Any, List, Optional
 import logging
 import json
@@ -171,13 +173,27 @@ async def get_task(
     
     return task
 
+
+
 @router.get("/", response_model=List[Task])
 async def list_tasks(
     limit: int = 100,
+    offset: int = 0,
     status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db=Depends(get_db)
 ):
-    """List tasks"""
+    """
+    List tasks with pagination, sorted by recency (newest first)
+    
+    Parameters:
+    - limit: Maximum number of tasks to return (default: 100)
+    - offset: Number of tasks to skip (default: 0)
+    - status: Filter tasks by status
+    - start_date: Filter tasks created on or after this date (ISO format: YYYY-MM-DD)
+    - end_date: Filter tasks created on or before this date (ISO format: YYYY-MM-DD)
+    """
     # Create task repository
     task_repo = TaskRepository(db)
     
@@ -186,10 +202,71 @@ async def list_tasks(
     if status:
         query["current_state.status"] = status
     
-    # Get tasks
-    tasks = await task_repo.list(query, limit)
+    # Add date filters if provided - FIXED: Use datetime objects instead of strings
+    if start_date or end_date:
+        query["created_at"] = {}
+        
+        if start_date:
+            try:
+                # Convert to datetime object for MongoDB comparison
+                start_datetime = datetime.fromisoformat(f"{start_date}T00:00:00")
+                query["created_at"]["$gte"] = start_datetime  # Use datetime object directly
+                logger.debug(f"Added start_date filter: {start_datetime}")
+            except ValueError:
+                raise HTTPException(400, "Invalid start_date format. Use YYYY-MM-DD")
+                
+        if end_date:
+            try:
+                # Set time to end of day and use datetime object
+                end_datetime = datetime.fromisoformat(f"{end_date}T23:59:59")
+                query["created_at"]["$lte"] = end_datetime  # Use datetime object directly
+                logger.debug(f"Added end_date filter: {end_datetime}")
+            except ValueError:
+                raise HTTPException(400, "Invalid end_date format. Use YYYY-MM-DD")
     
-    return tasks
+    # Log the query for debugging
+    logger.debug(f"MongoDB query: {json.dumps(query, default=str)}")
+    print("Query:", query)
+    
+    # For debugging, get all tasks first
+    all_tasks_count = await task_repo.count({})
+    logger.debug(f"Total tasks in database: {all_tasks_count}")
+    print("Total tasks:", all_tasks_count)
+    
+    # Get total count for pagination metadata
+    total_count = await task_repo.count(query)
+    print("Matching tasks:", total_count)
+    logger.debug(f"Tasks matching query: {total_count}")
+    
+    # Get tasks with pagination, sorted by created_at in descending order (newest first)
+    tasks = await task_repo.listAll(query, limit, offset, sort=[("created_at", -1)])
+    print("Retrieved tasks:", len(tasks))
+    logger.debug(f"Retrieved {len(tasks)} tasks")
+    
+    # Add pagination metadata to response
+    pagination = {
+        "total": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_more": (offset + len(tasks)) < total_count
+    }
+    
+    # Use FastAPI's jsonable_encoder to handle datetime serialization
+    serialized_tasks = jsonable_encoder(tasks)
+    
+    # Return tasks with pagination metadata
+    return JSONResponse(
+        content={
+            "items": serialized_tasks,
+            "pagination": pagination,
+            "filters_applied": {
+                "status": status,
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        }
+    )
+
 
 @router.post("/{task_id}/execute", response_model=Task)
 async def execute_task(

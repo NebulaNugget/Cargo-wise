@@ -145,7 +145,33 @@ class TaskRepository(BaseRepository[Task]):
         
         # Save updated state
         return await self.update_task(task)
+  
+    async def count(self, query: Dict[str, Any] = None) -> int:
+        """Count tasks matching the query"""
+        return await self.collection.count_documents(query or {})
     
+    async def listAll(self, query: Dict[str, Any] = None, limit: int = 100, offset: int = 0, sort=None) -> List[Task]:
+        """List tasks with pagination and optional sorting - FIXED date handling"""
+        # Default sort by created_at in descending order if not specified
+        if sort is None:
+            sort = [("created_at", -1)]
+    
+        # Use the query directly - no need for complex date processing
+        # since we're now passing datetime objects from the API layer
+        final_query = query or {}
+        
+        # Log the final query for debugging
+        logger.debug(f"Final MongoDB query: {final_query}")
+        
+        # Get raw documents from MongoDB
+        docs = await self.collection.find(final_query).sort(sort).skip(offset).limit(limit).to_list(length=limit)
+        
+        # Log the number of documents found
+        logger.debug(f"Found {len(docs)} documents matching query")
+        
+        # Convert documents to Task objects
+        return [Task(**doc) for doc in docs]
+        
     async def get_pending_approval_tasks(self, limit: int = 100) -> List[Task]:
         """Get tasks pending human approval"""
         return await self.list({
