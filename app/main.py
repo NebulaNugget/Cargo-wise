@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import asyncio
 import logging
+import os
 from app.utils.logging import set_log_repository
 from app.db.repositories.log_repository import LogRepository
 if sys.platform == "win32":
@@ -29,7 +30,10 @@ from app.utils.logging import logger, log_api_request
 from app.db.database import db, get_db_session
 from app.db.repositories.task_repository import TaskRepository
 from app.models.task import TaskStatus
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,9 +50,11 @@ task_metrics = {
 }
 
 # CORS middleware for React frontend
+allowed_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    #allow_origins=["*"],
     #allow_origins=["http://localhost:5173"],  # React dev server
     allow_credentials=True,
     allow_methods=["*"],
@@ -234,4 +240,6 @@ async def execute_direct(task_request: Dict[str, Any]):
 if __name__ == "__main__":
     import uvicorn
     # setup_windows_event_loop()
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv('API_HOST', '0.0.0.0')
+    port = int(os.getenv('API_PORT', '8000'))
+    uvicorn.run("app.main:app", host=host, port=port, reload=True)

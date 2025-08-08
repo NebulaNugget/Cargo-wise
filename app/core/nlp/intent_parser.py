@@ -2,6 +2,11 @@
 from typing import Dict, Any, Tuple, List, Optional
 import re
 import logging
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 from app.core.marc1.protocol import Marc1Intent
 
 logger = logging.getLogger(__name__)
@@ -16,9 +21,13 @@ class IntentParser:
     
     def __init__(self):
         self.intent_patterns = self._initialize_patterns()
+        self.default_confidence_threshold = float(os.getenv('INTENT_CONFIDENCE_THRESHOLD', '0.9'))
         
     def _initialize_patterns(self) -> Dict[str, Dict[str, Any]]:
         """Initialize regex patterns for intent matching"""
+        low_confidence = float(os.getenv('LOW_CONFIDENCE_THRESHOLD', '0.5'))
+        medium_confidence = float(os.getenv('MEDIUM_CONFIDENCE_THRESHOLD', '0.7'))
+        high_confidence = float(os.getenv('HIGH_CONFIDENCE_THRESHOLD', '0.75'))
         return {
             "cargowise_login": {
                 "patterns": [
@@ -32,7 +41,7 @@ class IntentParser:
                     "password": r"(?i)password[:\s]+([^\s]+)",
                     "environment": r"(?i)environment[:\s]+([^\s]+)"
                 },
-                "confidence": 0.5
+                "confidence": low_confidence
             },
            
             "search_booking": {
@@ -45,7 +54,7 @@ class IntentParser:
                     "booking_reference": r"(?i)(?:reference|ref|number)[:\s]+([^\s,]+)",
                     "customer": r"(?i)(?:for|customer)[:\s]+([^,]+?)(?:,|\s+with|\s+and|\s+at|\s*$)"
                 },
-                "confidence": 0.7
+                "confidence": medium_confidence
             },
              "create_shipment": {
                 "patterns": [
@@ -61,7 +70,7 @@ class IntentParser:
                     "description": r"(?i)(?:description|desc|details)[:\s]+([^,]+?)(?:,|\s+and|\s*$)",
                     "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
                 },
-                "confidence": 0.75
+                "confidence": high_confidence
             },
             "search_shipment_by_housebill": {
                 "patterns": [
@@ -75,7 +84,7 @@ class IntentParser:
                     "housebill": r"(?i)(?:housebill|house\s+bill|hbl)[:\s]+([^\s,]+)",
                     "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
                 },
-                "confidence": 0.75
+                "confidence": high_confidence
             },
             "create_consolidation": {
                 "patterns": [
@@ -97,7 +106,7 @@ class IntentParser:
                     "vessel": r"(?i)vessel[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
                     "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
                 },
-                "confidence": 0.75
+                "confidence": high_confidence
             }
             ,
             "track_shipment": {

@@ -1,9 +1,12 @@
 from typing import Dict, Any, Optional
 import logging
+import os
 from app.ai.tools.base_tool import Marc1Tool, ToolNodeInput
 from .cargowise_automation import CargoWiseAutomation
 from datetime import datetime
-
+from dotenv import load_dotenv
+# Load environment variables
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 class CargoWiseLoginTool(Marc1Tool):
@@ -114,7 +117,7 @@ class CargoWiseLoginTool(Marc1Tool):
             # task_id = self.input.task_id if hasattr(self, 'input') and self.input else None
             logger.info(f"Using task_id: {task_id} for browser tools")
             # Navigate to login page
-            login_url = "https://cargowise.com/login"  # Replace with actual URL
+            login_url = os.getenv('CARGOWISE_WEB_LOGIN_URL', 'https://cargowise.com/login')  # Replace with actual URL
             
             navigate_result = await navigate_tool.execute({
                 "parameters": {

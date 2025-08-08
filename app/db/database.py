@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class DatabaseSettings(BaseModel):
     """Database connection settings"""
     mongo_uri: str = os.getenv("MONGO_URI", "mongodb+srv://allensteadson:Xl5EDPkL6qSwUprr@cluster0.pzstbpn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-    database_name: str = os.getenv("DB_NAME", "cargowise_automation")
+    database_name: str = os.getenv("DATABASE_NAME", "cargowise_automation")
 
 class Database:
     client: Optional[AsyncIOMotorClient] = None

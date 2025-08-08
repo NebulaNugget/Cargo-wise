@@ -9,11 +9,13 @@ import traceback
 import concurrent.futures
 import glob
 import re
+from dotenv import load_dotenv
 import signal
 import psutil
 from contextlib import contextmanager
 from .task_status_checker import TaskStatusChecker
-
+# Load environment variables
+load_dotenv()
 logger = logging.getLogger(__name__)
 # WebSocket broadcast function - will be set by the API layer
 _ws_broadcast_func = None
@@ -26,12 +28,11 @@ def set_ws_broadcast_function(broadcast_func):
 class RobotSikuliDriver:
     """Improved driver using Robot Framework + SikuliLibrary with timeout handling"""
     
-    def __init__(self, image_dir: str = "images", app_path: str="C:\Program Files (x86)\WiseTech Global\WiseCloud Client\WiseCloudClient.exe", timeout: int = 60,task_id: Optional[str] = None, screenshot_dir: Optional[str] = None):
+    def __init__(self, image_dir: str = "images", app_path: str=None, timeout: int = None,task_id: Optional[str] = None, screenshot_dir: Optional[str] = None):
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
-        self.timeout = timeout  # Reduced default timeout
-        self.app_path = app_path  # CargoWise application path
-        # Create a thread pool executor for running subprocesses
+        self.timeout = timeout or int(os.getenv('ROBOT_TIMEOUT', '60'))
+        self.app_path = app_path or os.getenv('CARGOWISE_APP_PATH')
       
         self.task_id = task_id
         self.screenshot_dir = screenshot_dir

@@ -4,11 +4,13 @@ from typing import Dict, Any, Optional
 import logging
 import base64
 import os
+from dotenv import load_dotenv
 from datetime import datetime 
 from .robot_driver import RobotSikuliDriver
 from .task_status_checker import TaskStatusChecker
 logger = logging.getLogger(__name__)
-
+# Load environment variables
+load_dotenv()
 
 class CargoWiseAutomation:
     """Simplified CargoWise automation using Robot Framework"""
@@ -18,7 +20,8 @@ class CargoWiseAutomation:
         self.task_id = task_id
         # Add task status checker
         self.task_checker = TaskStatusChecker(task_id)
-        self.screenshot_base_dir = Path("C:/Users/UK-PC/Desktop/AI driven cargo-wise automation framework/cargowise-ai-backend/screenshots")
+        screenshot_base_path = os.getenv('SCREENSHOT_BASE_DIR', 'C:/Users/UK-PC/Desktop/AI driven cargo-wise automation framework/cargowise-ai-backend/screenshots')
+        self.screenshot_base_dir = Path(screenshot_base_path)
         
         # Create task-specific screenshot directory if task_id is provided
         if self.task_id:
@@ -33,10 +36,10 @@ class CargoWiseAutomation:
             print(f"Created default screenshot directory: {self.screenshot_dir}")
         self.driver = RobotSikuliDriver(
 
-            image_dir="cargowise_images",
-            timeout=300,
+            image_dir=image_dir or os.getenv('IMAGE_DIR', 'cargowise_images'),
+            timeout=int(os.getenv('DEFAULT_TIMEOUT', '300')),
             #app_path="C:\Windows\System32\calc.exe"
-            app_path="C:\Program Files (x86)\WiseTech Global\WiseCloud Client\WiseCloudClient.exe",
+            app_path=os.getenv('CARGOWISE_APP_PATH'),
             task_id=self.task_id,  # Pass task_id to driver
             screenshot_dir=str(self.screenshot_dir)  # Pass screenshot directory to driver
 )
@@ -162,7 +165,10 @@ Search Shipment By Housebill
     Sleep    3s
     Click    ${IMAGE_DIR}/close-cargowise2.png
     Sleep    3s
-    Click    ${IMAGE_DIR}/close-wisetech.png
+
+    Click    ${IMAGE_DIR}/wisecloud-logo.png
+    Sleep    2s
+    Click    ${IMAGE_DIR}/close-wisetech-white.png
     Sleep    2s
     Click    ${IMAGE_DIR}/close-wisetech.png
     
@@ -268,9 +274,11 @@ Create New Shipment
     Sleep    5s
 
     Click    ${IMAGE_DIR}/exit-cargowise-btn.png
-    Sleep    5s
+    Sleep    25s
 
-    Click    ${IMAGE_DIR}/close-wisetech.png
+    Click    ${IMAGE_DIR}/wisecloud-logo2.png
+    Sleep    2s
+    Click    ${IMAGE_DIR}/close-wisetech-white.png
     Sleep    2s
     Click    ${IMAGE_DIR}/close-wisetech.png
     

@@ -11,7 +11,10 @@ import aiofiles
 from fastapi import WebSocket, WebSocketDisconnect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Dictionary to store active WebSocket connections by user_id and task_id
@@ -58,11 +61,15 @@ class ScreenshotManager:
             cls._instance = cls()
         return cls._instance
     
+
+    
     def __init__(self):
+        screenshot_dir=os.getenv('SCREENSHOT_DIR')
         if self._initialized:
             return
         self._initialized = True
-        self._screenshot_dir = Path("C:/Users/UK-PC/Desktop/AI driven cargo-wise automation framework/cargowise-ai-backend/screenshots")
+        self._screenshot_dir=Path(screenshot_dir)
+        #self._screenshot_dir = Path("C:/Users/UK-PC/Desktop/AI driven cargo-wise automation framework/cargowise-ai-backend/screenshots")
         self._screenshot_dir.mkdir(exist_ok=True)
         self._event_handler = ScreenshotEventHandler()
         
