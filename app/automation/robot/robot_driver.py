@@ -12,22 +12,34 @@ import re
 import signal
 import psutil
 from contextlib import contextmanager
+from .task_status_checker import TaskStatusChecker
 
 logger = logging.getLogger(__name__)
+# WebSocket broadcast function - will be set by the API layer
+_ws_broadcast_func = None
+def set_ws_broadcast_function(broadcast_func):
+    """Set the WebSocket broadcast function to be used for sending screenshots"""
+    global _ws_broadcast_func
+    _ws_broadcast_func = broadcast_func
+    logger.info("WebSocket broadcast function set for robot driver")
 
 class RobotSikuliDriver:
     """Improved driver using Robot Framework + SikuliLibrary with timeout handling"""
     
-    def __init__(self, image_dir: str = "images", app_path: str="C:/Users/UK-PC/AppData/Local/slack/slack.exe", timeout: int = 60):
+    def __init__(self, image_dir: str = "images", app_path: str="C:\Program Files (x86)\WiseTech Global\WiseCloud Client\WiseCloudClient.exe", timeout: int = 60,task_id: Optional[str] = None, screenshot_dir: Optional[str] = None):
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
         self.timeout = timeout  # Reduced default timeout
         self.app_path = app_path  # CargoWise application path
         # Create a thread pool executor for running subprocesses
-        # Create a thread pool executor for running subprocesses
+      
+        self.task_id = task_id
+        self.screenshot_dir = screenshot_dir
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)  # Reduced workers
         # Track running processes
         self._running_processes = set()
+         # Add task status checker
+        self.task_checker = TaskStatusChecker(task_id)
         # Verify environment on initialization
         self._verify_environment()
     
@@ -150,7 +162,7 @@ Quick Test
             logger.warning(f"Error killing process tree {pid}: {e}")
     
     def _run_robot_command_with_timeout(self, cmd, timeout):
-        """Run robot command with proper timeout handling"""
+        """Run robot command with proper timeout handling and cancellation check"""
         try:
             logger.info(f"Running robot command: {' '.join(cmd)}")
             
@@ -160,12 +172,56 @@ Quick Test
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                preexec_fn=os.setsid if hasattr(os, 'setsid') else None  # Create process group on Unix
+                preexec_fn=os.setsid if hasattr(os, 'setsid') else None
             )
             
             with self._process_timeout_handler(process):
                 try:
-                    stdout, stderr = process.communicate(timeout=timeout)
+                    # Check for cancellation every 2 seconds
+                    check_interval = 1
+                    elapsed_time = 0
+                    
+                    while elapsed_time < timeout:
+                        # Check if process has completed
+                        if process.poll() is not None:
+                            stdout, stderr = process.communicate()
+                            break
+                            
+                        # Check for task cancellation
+                        try:
+                            # Use synchronous cancellation check - no async complications
+                            if self.task_checker.is_cancelled():
+                                logger.info(f"Task {self.task_id} cancelled, terminating robot process")
+                                self._kill_process_tree(process.pid)
+                                return {
+                                    "success": False,
+                                    "output": "",
+                                    "error": "Task was cancelled by user",
+                                    "return_code": -999,
+                                    "canceled": True
+                                }
+                        except Exception as check_error:
+                            logger.warning(f"Error checking task cancellation: {check_error}")
+                        
+                        # Wait for check interval
+                        import time
+                        time.sleep(check_interval)
+                        elapsed_time += check_interval
+                    
+                    # If we get here, either process completed or timeout reached
+                    if process.poll() is None:
+                        # Process still running, timeout reached
+                        logger.error(f"Robot command timed out after {timeout} seconds")
+                        self._kill_process_tree(process.pid)
+                        return {
+                            "success": False,
+                            "output": "",
+                            "error": f"Command timed out after {timeout} seconds",
+                            "return_code": -1
+                        }
+                    else:
+                        # Process completed normally
+                        stdout, stderr = process.communicate()
                     
                     # Log results
                     if process.returncode != 0:
@@ -185,8 +241,6 @@ Quick Test
                     
                 except subprocess.TimeoutExpired:
                     logger.error(f"Robot command timed out after {timeout} seconds")
-                    
-                    # Force kill the process
                     self._kill_process_tree(process.pid)
                     
                     # Try to get partial output
@@ -259,7 +313,7 @@ Initialize Sikuli Environment
     Sikuli.Add Image Path    ${{IMAGE_DIR}}
     Sikuli.Set Move Mouse Delay    0.5
     # Set shorter timeouts for Sikuli operations
-    Sikuli.Set Min Similarity    0.7
+    Sikuli.Set Min Similarity    0.5
     # Launch CargoWise if app path is provided
     Run Keyword If    '${{APP_PATH}}' != '${{EMPTY}}'    Launch CargoWise Application
     Log    Sikuli environment initialized
@@ -268,11 +322,16 @@ Launch CargoWise Application
     [Documentation]    Launch the CargoWise application
     Log    Launching application from: ${{APP_PATH}}
     Log To Console    Launching application: ${{APP_PATH}}
-    Run Keyword If    '${{APP_PATH}}' != '${{EMPTY}}'    Run Process    ${{APP_PATH}}    shell=True
+    # Use Start Process instead of Run Process to avoid blocking
+    ${{process}}=    Start Process    ${{APP_PATH}}    shell=True
     ${{timestamp}}=    Get Current Date
     Log To Console    Application launch initiated at ${{timestamp}}
-    Sleep    5s    # Wait for application to start
+    # Wait for application to start and verify it's running
+    Sleep    15s
+    
     Log To Console    Application should be started now
+
+
 
 Cleanup Sikuli Environment
     [Documentation]    Clean up Sikuli resources
@@ -307,6 +366,7 @@ Run Keyword With Timeout
     Return    ${{result}}
 
 Run Sikuli Task
+
     [Documentation]    Execute the actual Sikuli task
     Log    Starting Sikuli task execution
     Log To Console    Executing Sikuli task...
@@ -345,15 +405,30 @@ Run Sikuli Task
             # If we're in a task and this is content
             if in_task and line.startswith(' '):
                 # Skip setup/teardown and documentation
-                if not any(keyword in stripped.lower() for keyword in ['[setup]', '[teardown]', '[documentation]', '[timeout]']):
+                if not any(keyword in stripped.lower() for keyword in ['[setup]', '[teardown]', '[documentation]', '[timeout]', '[keywords]']):
                     # Add step count and logging for significant operations
-                    if any(keyword in stripped.lower() for keyword in ['click', 'input text', 'wait until', 'type', 'press']):
+                    if any(keyword in stripped.lower() for keyword in ['click', 'input text', 'wait until', 'type', 'press', 'double click', 'press key']):
                         step_count += 1
                         # Add logging before the step
                         task_lines.append(f'    Log To Console    Step {step_count}: {stripped}')
                         task_lines.append(f'    ${{step{step_count}_start}}=    Get Current Date')
                         # Add the actual step
                         task_lines.append('    ' + stripped)
+
+
+                        # Add screenshot after the step - simplified approach
+                        task_lines.append(f'    ${{timestamp}}=    Get Current Date    result_format=%Y%m%d_%H%M%S')
+                        task_lines.append(f'    ${{screenshot_name}}=    Set Variable    step_{step_count}_${{timestamp}}.png')
+                        task_lines.append(f'    ${{screenshot_path}}=    Set Variable    ${{SCREENSHOT_DIR}}/${{screenshot_name}}')
+                        # Create directory if it doesn't exist
+                        task_lines.append(f'    Create Directory    ${{SCREENSHOT_DIR}}')
+                        # Capture screen and get the temporary file path
+                        task_lines.append(f'    ${{temp_screenshot}}=    Capture Screen')
+                        # Copy the captured file to our desired location
+                        task_lines.append(f'    Copy File    ${{temp_screenshot}}    ${{screenshot_path}}')
+                        task_lines.append(f'    Log To Console    Screenshot saved: ${{screenshot_path}}')
+
+
                         # Add logging after the step
                         task_lines.append(f'    ${{step{step_count}_end}}=    Get Current Date')
                         task_lines.append(f'    ${{step{step_count}_duration}}=    Subtract Date From Date    ${{step{step_count}_end}}    ${{step{step_count}_start}}')
@@ -384,7 +459,8 @@ Run Sikuli Task
         
         return '\n'.join(normalized_lines)
     
-    async def execute_robot_script(self, robot_script: str, variables: Dict[str, Any] = None, 
+    
+    async def execute_robot_script(self, robot_script: str, variables: Dict[str, Any] = None, task_id: Optional[str] = None,
                                  timeout: Optional[int] = None, app_path: Optional[str] = None) -> Dict[str, Any]:
         """Execute Robot Framework script with SikuliLibrary asynchronously"""
         
@@ -416,6 +492,15 @@ Run Sikuli Task
             # Add variables
             if not variables:
                 variables = {}
+
+            if self.screenshot_dir:
+                variables['SCREENSHOT_DIR'] = self.screenshot_dir
+            elif current_task_id:
+                # Create task-specific screenshot directory
+                screenshot_base = Path("C:/Users/UK-PC/Desktop/AI driven cargo-wise automation framework/cargowise-ai-backend/screenshots")
+                task_screenshot_dir = screenshot_base / current_task_id
+                task_screenshot_dir.mkdir(parents=True, exist_ok=True)
+                variables['SCREENSHOT_DIR'] = str(task_screenshot_dir)
                 
             # Add essential variables
             variables.update({
@@ -536,6 +621,46 @@ Run Sikuli Task
             self.cleanup()
         except:
             pass
+
+    # Add the cancel_running_tasks method as an instance method
+    async def cancel_running_tasks(self):
+        """Cancel all running Robot Framework processes"""
+        logger.info(f"Cancelling running Robot processes")
+        
+        try:
+            # Make a copy of the set to avoid modification during iteration
+            processes_to_kill = set(self._running_processes)
+            
+            for pid in processes_to_kill:
+                try:
+                    logger.info(f"Terminating process {pid}")
+                    self._kill_process_tree(pid)
+                except Exception as e:
+                    logger.error(f"Error terminating process {pid}: {str(e)}")
+            
+            # Clear the running processes set
+            self._running_processes.clear()
+            
+            # Also terminate any application that might have been launched
+            if self.app_path and os.path.exists(self.app_path):
+                app_name = os.path.basename(self.app_path)
+                logger.info(f"Attempting to terminate application: {app_name}")
+                try:
+                    # Find and kill the application process
+                    import psutil
+                    for proc in psutil.process_iter(['pid', 'name']):
+                        if app_name.lower() in proc.info['name'].lower():
+                            logger.info(f"Killing application process: {proc.info['name']} (PID: {proc.info['pid']})")
+                            self._kill_process_tree(proc.info['pid'])
+                except Exception as app_kill_error:
+                    logger.error(f"Error killing application: {str(app_kill_error)}")
+            
+            return {"success": True, "message": f"Cancelled {len(processes_to_kill)} processes"}
+        except Exception as e:
+            logger.error(f"Error in cancel_running_tasks: {str(e)}")
+            return {"success": False, "message": f"Error cancelling processes: {str(e)}"}
+
+
 
 # Example usage and testing
 async def test_robot_sikuli_driver():

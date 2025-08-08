@@ -32,22 +32,9 @@ class IntentParser:
                     "password": r"(?i)password[:\s]+([^\s]+)",
                     "environment": r"(?i)environment[:\s]+([^\s]+)"
                 },
-                "confidence": 0.8
+                "confidence": 0.5
             },
-            "create_booking": {
-                "patterns": [
-                    r"(?i)create\s+(?:a\s+)?(?:new\s+)?booking",
-                    r"(?i)make\s+(?:a\s+)?(?:new\s+)?booking",
-                    r"(?i)add\s+(?:a\s+)?(?:new\s+)?booking"
-                ],
-                "param_patterns": {
-                    "customer": r"(?i)(?:for|customer)[:\s]+([^,]+?)(?:,|\s+from|\s+to|\s+with|\s+and|\s+at|\s*$)",
-                    "origin": r"(?i)(?:from|origin)[:\s]+([^,]+?)(?:,|\s+to|\s+with|\s+and|\s+at|\s*$)",
-                    "destination": r"(?i)(?:to|destination)[:\s]+([^,]+?)(?:,|\s+with|\s+and|\s+at|\s*$)",
-                    "cargo_details": r"(?i)(?:with|cargo)[:\s]+([^,]+?)(?:,|\s+and|\s+at|\s*$)"
-                },
-                "confidence": 0.75
-            },
+           
             "search_booking": {
                 "patterns": [
                     r"(?i)search\s+(?:for\s+)?(?:a\s+)?booking",
@@ -60,6 +47,59 @@ class IntentParser:
                 },
                 "confidence": 0.7
             },
+             "create_shipment": {
+                "patterns": [
+                    r"(?i)create\s+(?:a\s+)?(?:new\s+)?shipment",
+                    r"(?i)make\s+(?:a\s+)?(?:new\s+)?shipment",
+                    r"(?i)add\s+(?:a\s+)?(?:new\s+)?shipment",
+                    r"(?i)new\s+shipment"
+                ],
+                "param_patterns": {
+                    "weight": r"(?i)(?:weight|wt)[:\s]+([^,]+?)(?:,|\s+kg|\s+lbs|\s+tons|\s+and|\s+with|\s*$)",
+                    "consignor": r"(?i)(?:consignor|sender|from)[:\s]+([^,]+?)(?:,|\s+to|\s+with|\s+and|\s*$)",
+                    "transport_method": r"(?i)(?:transport|method|via|by)[:\s]+([^,]+?)(?:,|\s+with|\s+and|\s*$)",
+                    "description": r"(?i)(?:description|desc|details)[:\s]+([^,]+?)(?:,|\s+and|\s*$)",
+                    "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
+                },
+                "confidence": 0.75
+            },
+            "search_shipment_by_housebill": {
+                "patterns": [
+                    r"(?i)search\s+(?:for\s+)?(?:a\s+)?shipment\s+(?:by\s+)?housebill",
+                    r"(?i)find\s+(?:a\s+)?shipment\s+(?:by\s+)?housebill",
+                    r"(?i)look\s+(?:up|for)\s+(?:a\s+)?shipment\s+(?:by\s+)?housebill",
+                    r"(?i)search\s+housebill",
+                    r"(?i)find\s+housebill"
+                ],
+                "param_patterns": {
+                    "housebill": r"(?i)(?:housebill|house\s+bill|hbl)[:\s]+([^\s,]+)",
+                    "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
+                },
+                "confidence": 0.75
+            },
+            "create_consolidation": {
+                "patterns": [
+                    r"(?i)create\s+(?:a\s+)?(?:new\s+)?consolidation",
+                    r"(?i)make\s+(?:a\s+)?(?:new\s+)?consolidation",
+                    r"(?i)add\s+(?:a\s+)?(?:new\s+)?consolidation",
+                    r"(?i)new\s+consolidation",
+                    r"(?i)consolidate\s+(?:shipments?|cargo)"
+                ],
+                "param_patterns": {
+                    "transport": r"(?i)(?:transport|method|via|by)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "container_mode": r"(?i)(?:container\s+mode|mode)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "first_load": r"(?i)(?:first\s+load|first)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "last_load": r"(?i)(?:last\s+load|last)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "voyage": r"(?i)voyage[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "etd": r"(?i)(?:etd|departure)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "eta": r"(?i)(?:eta|arrival)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "bol": r"(?i)(?:bol|bill\s+of\s+lading)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "vessel": r"(?i)vessel[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
+                },
+                "confidence": 0.75
+            }
+            ,
             "track_shipment": {
                 "patterns": [
                     r"(?i)track\s+(?:a\s+)?shipment",
@@ -71,7 +111,8 @@ class IntentParser:
                     "container_number": r"(?i)container[:\s]+([^\s,]+)"
                 },
                 "confidence": 0.7
-            }
+            },
+            
         }
     
     def parse_query(self, query: str) -> Tuple[Marc1Intent, List[Dict[str, Any]]]:
@@ -113,7 +154,7 @@ class IntentParser:
                     # If this is the best match so far, update
                     if confidence > best_confidence:
                         best_intent = intent_name
-                        best_confidence = min(confidence, 0.95)  # Cap at 0.95
+                        best_confidence = min(confidence, 0.85)  # Cap at 0.95
                         best_params = params
                     
                     break  # No need to check other patterns for this intent
@@ -125,7 +166,7 @@ class IntentParser:
             best_params = {}
             
             # Try to extract some basic parameters anyway
-            if "booking" in query.lower():
+            if "shipment" in query.lower():
                 if "create" in query.lower() or "new" in query.lower() or "make" in query.lower():
                     best_intent = "create_booking"
                     best_confidence = 0.4
@@ -169,27 +210,7 @@ class IntentParser:
                     }
                 }
             ],
-            "create_booking": [
-                {
-                    "name": "cargowise_login",
-                    "description": "Log into CargoWise",
-                    "parameters": {
-                        "username": "${username}",
-                        "password": "${password}",
-                        "environment": "desktop"
-                    }
-                },
-                {
-                    "name": "cargowise_create_booking",
-                    "description": "Create a new booking in CargoWise",
-                    "parameters": {
-                        "customer": intent.parameters.get("customer", "${customer}"),
-                        "origin": intent.parameters.get("origin", "${origin}"),
-                        "destination": intent.parameters.get("destination", "${destination}"),
-                        "cargo_details": intent.parameters.get("cargo_details", "${cargo_details}")
-                    }
-                }
-            ],
+            
             "search_booking": [
                 {
                     "name": "cargowise_login",
@@ -208,6 +229,29 @@ class IntentParser:
                     }
                 }
             ],
+            "create_shipment": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": intent.parameters.get("login_password", "${password}"),
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_create_shipment",
+                    "description": "Create a new shipment in CargoWise",
+                    "parameters": {
+                        "weight": intent.parameters.get("weight", "${weight}"),
+                        "consignor": intent.parameters.get("consignor", "${consignor}"),
+                        "transport_method": intent.parameters.get("transport_method", "${transport_method}"),
+                        "description": intent.parameters.get("description", "${description}")
+                    }
+                }
+            ],
+            
+
             "track_shipment": [
                 {
                     "name": "cargowise_login",
@@ -226,7 +270,52 @@ class IntentParser:
                         "container_number": intent.parameters.get("container_number", "${container_number}")
                     }
                 }
-            ]
+            ],
+            "search_shipment_by_housebill":[
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": intent.parameters.get("login_password", "${password}"),
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_search_shipment_by_housebill",
+                    "description": "Search for a shipment by housebill in CargoWise",
+                    "parameters": {
+                        "housebill": intent.parameters.get("housebill", "${housebill}")
+                    }
+                }
+            ],
+
+            "create_consolidation": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": intent.parameters.get("login_password", "${password}"),
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_create_consolidation",
+                    "description": "Create a new consolidation in CargoWise",
+                    "parameters": {
+                        "transport": intent.parameters.get("transport", "${transport}"),
+                        "container_mode": intent.parameters.get("container_mode", "${container_mode}"),
+                        "first_load": intent.parameters.get("first_load", "${first_load}"),
+                        "last_load": intent.parameters.get("last_load", "${last_load}"),
+                        "voyage": intent.parameters.get("voyage", "${voyage}"),
+                        "etd": intent.parameters.get("etd", "${etd}"),
+                        "eta": intent.parameters.get("eta", "${eta}"),
+                        "bol": intent.parameters.get("bol", "${bol}"),
+                        "vessel": intent.parameters.get("vessel", "${vessel}")
+                    }
+                }
+            ],
         }
         
         return intent_to_tools.get(intent.intent_name, [])

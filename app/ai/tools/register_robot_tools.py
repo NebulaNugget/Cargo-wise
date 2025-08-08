@@ -2,7 +2,7 @@
 from app.core.marc1.tool_registry import get_tool_registry
 from app.automation.robot import (
     CargoWiseLoginTool,
-    CargoWiseCreateBookingTool,
+    
     CargoWiseSearchBookingTool
 )
 import logging
@@ -21,7 +21,7 @@ def register_robot_tools():
     # Register CargoWise tools based on Robot Framework
     logger.info("Registering Robot Framework-based CargoWise tools")
     registry.register_tool(CargoWiseLoginTool)
-    registry.register_tool(CargoWiseCreateBookingTool)
+  
     registry.register_tool(CargoWiseSearchBookingTool)
     
     return registry

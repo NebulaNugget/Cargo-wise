@@ -5,14 +5,17 @@ from typing import Dict, Type, List, Any, Optional
 from app.ai.tools.cargowise_tools import (
     CargoWiseLoginTool as OldCargoWiseLoginTool,
     CargoWiseSearchBookingTool as OldCargoWiseSearchBookingTool,
-    CargoWiseCreateBookingTool as OldCargoWiseCreateBookingTool,
+    
     CargoWiseUpdateBookingTool,
+    CargoWiseCreateShipmentTool,
+    CargoWiseCreateConsolidationTool,
+    CargoWiseSearchShipmentByHousebillTool,
     CargoWiseGenerateReportTool
 )
 # Import the new Robot Framework-based tools
 from app.automation.robot import (
     CargoWiseLoginTool,
-    CargoWiseCreateBookingTool,
+    
     CargoWiseSearchBookingTool
 )
 import logging
@@ -165,27 +168,7 @@ class ToolRegistry:
                     }
                 }
             ],
-            "create_booking": [
-                {
-                    "name": "cargowise_login",
-                    "description": "Log into CargoWise",
-                    "parameters": {
-                        "username": "${username}",
-                        "password": "${password}",
-                        "environment": "desktop"
-                    }
-                },
-                {
-                    "name": "cargowise_create_booking",
-                    "description": "Create a new booking in CargoWise",
-                    "parameters": {
-                        "customer": "${customer}",
-                        "origin": "${origin}",
-                        "destination": "${destination}",
-                        "cargo_details": "${cargo_details}"
-                    }
-                }
-            ],
+           
             "search_booking": [
                 {
                     "name": "cargowise_login",
@@ -201,6 +184,71 @@ class ToolRegistry:
                     "description": "Search for a booking in CargoWise",
                     "parameters": {
                         "booking_reference": "${booking_reference}"
+                    }
+                }
+            ],
+            "create_shipment": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": "${login_password}",
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_create_shipment",
+                    "description": "Create a new shipment in CargoWise",
+                    "parameters": {
+                        "weight": "${weight}",
+                        "consignor": "${consignor}",
+                        "transport_method": "${transport_method}",
+                        "description": "${description}"
+                    }
+                }
+            ],
+            "search_shipment_by_housebill": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": "${login_password}",
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_search_shipment_by_housebill",
+                    "description": "Search for a shipment by housebill number",
+                    "parameters": {
+                        "housebill": "${housebill}"
+                    }
+                }
+            ],
+            "create_consolidation": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": "${login_password}",
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_create_consolidation",
+                    "description": "Create a new consolidation in CargoWise",
+                    "parameters": {
+                        "transport": "${transport}",
+                        "container_mode": "${container_mode}",
+                        "first_load": "${first_load}",
+                        "last_load": "${last_load}",
+                        "voyage": "${voyage}",
+                        "eta": "${eta}",
+                        "etd": "${etd}",
+                        "bol": "${bol}",
+                        "vessel": "${vessel}"
                     }
                 }
             ],
@@ -321,10 +369,12 @@ def get_tool_registry():
     if not registry._tools:
         logger.info("Registering Robot Framework-based CargoWise tools")
         registry.register_tool(CargoWiseLoginTool)
-        registry.register_tool(CargoWiseCreateBookingTool)
-        registry.register_tool(CargoWiseSearchBookingTool)
         
+        registry.register_tool(CargoWiseSearchBookingTool)
+        registry.register_tool(CargoWiseCreateConsolidationTool)
+        registry.register_tool(CargoWiseSearchShipmentByHousebillTool,)
         # Register other existing tools
+        registry.register_tool(CargoWiseCreateShipmentTool)
         registry.register_tool(CargoWiseUpdateBookingTool)
         registry.register_tool(CargoWiseGenerateReportTool)
     

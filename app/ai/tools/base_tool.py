@@ -1,5 +1,6 @@
 # Base tool implementation
 from pydantic import BaseModel, Field
+from app.utils.task_status_utils import TaskStatusUtils
 from typing import Dict, Any, Optional, List, Type, ClassVar
 import logging
 import inspect
@@ -53,6 +54,15 @@ class Marc1Tool:
             parameters = input.get("parameters", {})
             context = input.get("context", {})
             input = ToolNodeInput(task_id=task_id, parameters=parameters, context=context)
+        # **NEW: Check if task is cancelled before execution**
+        if input.task_id and TaskStatusUtils.is_task_cancelled(input.task_id):
+            logger.info(f"Task {input.task_id} is cancelled, stopping tool {self.name}")
+            return {
+                "status": "CANCELED",
+                "outputs": {},
+                "error": "Task was cancelled by user",
+                "timestamp": datetime.utcnow().isoformat()
+            }
         # Validate required parameters
         validation_errors = self.validate_parameters(input.parameters)
         if validation_errors:
@@ -70,6 +80,16 @@ class Marc1Tool:
             # Execute the tool
             logger.info(f"Executing tool {self.name} for task {input.task_id}")
             result = await self._execute(input)
+
+            # **NEW: Check if task was cancelled during execution**
+            if input.task_id and TaskStatusUtils.is_task_cancelled(input.task_id):
+                logger.info(f"Task {input.task_id} was cancelled during tool {self.name} execution")
+                return {
+                    "status": "CANCELED",
+                    "outputs": {},
+                    "error": "Task was cancelled by user",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
             
             # Calculate execution time
             execution_time = (datetime.utcnow() - self.execution_start_time).total_seconds()

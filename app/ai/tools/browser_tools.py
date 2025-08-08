@@ -127,24 +127,52 @@ class BrowserSessionManager:
                 if cls._driver:
                     # Run quit in thread pool to avoid blocking
                     try:
+                        # First try to close all windows
+                        await asyncio.get_event_loop().run_in_executor(
+                            _thread_pool, 
+                            lambda: [window.close() for window in cls._driver.window_handles] if hasattr(cls._driver, 'window_handles') else None
+                        )
+                        
+                        # Then quit the driver
                         await asyncio.get_event_loop().run_in_executor(
                             _thread_pool, cls._driver.quit
                         )
                     except Exception as e:
                         logger.warning(f"Error during driver quit: {str(e)}")
+                        
+                        # If normal quit fails, try to kill the process
+                        try:
+                            import psutil
+                            process = psutil.Process(cls._driver.service.process.pid)
+                            for child in process.children(recursive=True):
+                                child.kill()
+                            process.kill()
+                        except Exception as kill_error:
+                            logger.warning(f"Error killing browser process: {str(kill_error)}")
                     finally:
                         cls._driver = None
                     
                 cls._initialized = False
                 logger.info("Selenium browser session cleaned up")
+                
+                # Also try to kill any chromedriver processes that might be left
+                try:
+                    import psutil
+                    for proc in psutil.process_iter(['pid', 'name']):
+                        if 'chromedriver' in proc.info['name'].lower() or 'chrome.exe' in proc.info['name'].lower():
+                            logger.info(f"Killing leftover browser process: {proc.info['name']} (PID: {proc.info['pid']})")
+                            proc.kill()
+                except Exception as proc_error:
+                    logger.warning(f"Error killing browser processes: {str(proc_error)}")
+                    
             except Exception as e:
                 logger.error(f"Error cleaning up Selenium: {str(e)}")
                 cls._driver = None
                 cls._initialized = False
 
     @classmethod
-    async def capture_screenshot(cls, filename_prefix: str = "screenshot") -> Optional[str]:
-        """Capture screenshot of current page"""
+    async def capture_screenshot(cls, filename_prefix: str = "screenshot", task_id: Optional[str]=None) -> Optional[str]:
+        """Capture screenshot of current page and save to task-specific folder"""
         try:
             driver = await cls.get_driver()
             if not driver:
@@ -153,11 +181,28 @@ class BrowserSessionManager:
             # Create screenshots directory
             screenshot_dir = Path("screenshots")
             screenshot_dir.mkdir(exist_ok=True)
-            
-            # Generate filename
+            # Generate timestamp for filename
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            screenshot_path = screenshot_dir / f"{filename_prefix}_{timestamp}.png"
-            
+            # If task_id is provided, create a task-specific subfolder
+            if task_id:
+              
+               
+                task_screenshot_dir = screenshot_dir / task_id
+                task_screenshot_dir.mkdir(exist_ok=True)
+                # Use the task-specific directory for saving the screenshot
+                final_screenshot_dir = task_screenshot_dir
+            else:
+         
+               
+                # Use the main screenshots directory
+                final_screenshot_dir = screenshot_dir
+
+            # Include task_id in filename if provided
+            if task_id:
+                screenshot_path = final_screenshot_dir / f"{filename_prefix}_{task_id}_{timestamp}.png"
+            else:
+                screenshot_path = final_screenshot_dir / f"{filename_prefix}_{timestamp}.png"
+                
             # Capture screenshot (run in thread pool)
             def _take_screenshot():
                 driver.save_screenshot(str(screenshot_path))
@@ -169,9 +214,9 @@ class BrowserSessionManager:
             # Convert to base64
             if screenshot_path.exists():
                 with open(screenshot_path, "rb") as f:
-                    return base64.b64encode(f.read()).decode('utf-8')
-            
-            return None
+                    screenshot_base64 = base64.b64encode(f.read()).decode('utf-8')
+                  
+            return str(screenshot_path)
         except Exception as e:
             logger.error(f"Error capturing screenshot: {str(e)}")
             return None
@@ -186,10 +231,19 @@ class BrowserNavigateTool(Marc1Tool):
     
     async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
         parameters = self._get_parameters(input)
+       
+        print(parameters)
+        print(input)
         url = parameters.get("url")
         wait_seconds = parameters.get("wait_seconds", 3)
         retry_count = parameters.get("retry_count", 2)
-        
+        # Extract task_id from context
+        task_id = None
+        if hasattr(input, 'context') and input.context:
+            task_id = input.context.get("task_id")
+        # Also check if task_id is in parameters
+        if not task_id and hasattr(input, 'parameters'):
+            task_id = input.parameters.get("task_id")
         if not url:
             return {
                 "status": "ERROR",
@@ -217,9 +271,9 @@ class BrowserNavigateTool(Marc1Tool):
                     _thread_pool, _navigate
                 )
                 
-                # Take screenshot
-                screenshot_base64 = await BrowserSessionManager.capture_screenshot("navigate")
                 
+                # Take screenshot with task_id
+                screenshot_base64 = await BrowserSessionManager.capture_screenshot("navigate", task_id)
                 return {
                     "status": "SUCCESS",
                     "outputs": {
@@ -251,11 +305,17 @@ class BrowserClickTool(Marc1Tool):
 
     async def _execute(self, input: ToolNodeInput) -> dict:
         parameters = self._get_parameters(input)
+        print(parameters)
+       
+        print(input)
         selector = parameters.get("selector")
         timeout = parameters.get("timeout", 30)
         text = parameters.get("text")
         wait_seconds = parameters.get("wait_seconds", 1)
-        
+        # Extract task_id from context
+        task_id = None
+        if hasattr(input, 'context') and input.context:
+            task_id = input.context.get("task_id")
         try:
             # Initialize browser session
             await BrowserSessionManager.initialize()
@@ -288,7 +348,7 @@ class BrowserClickTool(Marc1Tool):
             )
             
             # Take screenshot
-            screenshot_base64 = await BrowserSessionManager.capture_screenshot("click")
+            screenshot_base64 = await BrowserSessionManager.capture_screenshot("click", task_id)
             
             return {
                 "status": "SUCCESS",
@@ -317,11 +377,15 @@ class BrowserTypeTool(Marc1Tool):
 
     async def _execute(self, input: ToolNodeInput) -> dict:
         parameters = self._get_parameters(input)
+       
         selector = parameters.get("selector")
         text = parameters.get("text")
         timeout = parameters.get("timeout", 30)
         clear_first = parameters.get("clear_first", True)
-        
+        # Extract task_id from context
+        task_id = None
+        if hasattr(input, 'context') and input.context:
+            task_id = input.context.get("task_id")
         try:
             # Initialize browser session
             await BrowserSessionManager.initialize()
@@ -349,7 +413,7 @@ class BrowserTypeTool(Marc1Tool):
             )
             
             # Take screenshot
-            screenshot_base64 = await BrowserSessionManager.capture_screenshot("type")
+            screenshot_base64 = await BrowserSessionManager.capture_screenshot("type", task_id)
             
             return {
                 "status": "SUCCESS",
@@ -379,6 +443,11 @@ class BrowserGetTextTool(Marc1Tool):
         parameters = self._get_parameters(input)
         selector = parameters.get("selector")
         timeout = parameters.get("timeout", 30)
+
+        # Extract task_id from context
+        task_id = None
+        if hasattr(input, 'context') and input.context:
+            task_id = input.context.get("task_id")
         
         try:
             # Initialize browser session
@@ -403,7 +472,7 @@ class BrowserGetTextTool(Marc1Tool):
             )
             
             # Take screenshot
-            screenshot_base64 = await BrowserSessionManager.capture_screenshot("get_text")
+            screenshot_base64 = await BrowserSessionManager.capture_screenshot("get_text", task_id)
             
             return {
                 "status": "SUCCESS",
@@ -434,6 +503,11 @@ class BrowserWaitTool(Marc1Tool):
         selector = parameters.get("selector")
         state = parameters.get("state", "visible")
         timeout = parameters.get("timeout", 30)
+
+        # Extract task_id from context
+        task_id = None
+        if hasattr(input, 'context') and input.context:
+            task_id = input.context.get("task_id")
         
         try:
             # Initialize browser session
@@ -467,7 +541,7 @@ class BrowserWaitTool(Marc1Tool):
             )
             
             # Take screenshot
-            screenshot_base64 = await BrowserSessionManager.capture_screenshot("wait")
+            screenshot_base64 = await BrowserSessionManager.capture_screenshot("wait", task_id)
             
             return {
                 "status": "SUCCESS",
@@ -495,6 +569,11 @@ class BrowserExecuteScriptTool(Marc1Tool):
     async def _execute(self, input: ToolNodeInput) -> dict:
         parameters = self._get_parameters(input)
         script = parameters.get("script")
+
+        # Extract task_id from context
+        task_id = None
+        if hasattr(input, 'context') and input.context:
+            task_id = input.context.get("task_id")
         
         try:
             # Initialize browser session
@@ -512,7 +591,7 @@ class BrowserExecuteScriptTool(Marc1Tool):
             )
             
             # Take screenshot
-            screenshot_base64 = await BrowserSessionManager.capture_screenshot("script")
+            screenshot_base64 = await BrowserSessionManager.capture_screenshot("script", task_id)
             
             return {
                 "status": "SUCCESS",

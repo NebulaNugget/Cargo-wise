@@ -1,11 +1,13 @@
 from .tool_interface import (
     CargoWiseLoginTool,
-    CargoWiseCreateBookingTool,
-    CargoWiseSearchBookingTool
+    CargoWiseCreateConsolidationTool, 
+    CargoWiseSearchBookingTool,
+   
 )
 
 __all__ = [
     'CargoWiseLoginTool',
-    'CargoWiseCreateBookingTool',
-    'CargoWiseSearchBookingTool'
+    
+    'CargoWiseSearchBookingTool',
+    'CargoWiseCreateConsolidationTool'
 ]

@@ -1,4 +1,6 @@
 from typing import Dict, Any, List, Optional, AsyncGenerator
+# Add import at the top
+from app.utils.task_status_utils import TaskStatusUtils
 from langchain.agents import AgentExecutor
 from langchain.schema import AgentAction, AgentFinish
 import logging
@@ -31,15 +33,30 @@ class LinearWorkflow:
     def __init__(self, tools: List[Dict[str, Any]]):
         self.tools = tools
         
-    async def astream(self, initial_state: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], None]:
+    # In the astream method, replace the complex cancellation checks:
+    async def astream(self, initial_state: Dict[str, Any], start_at:int = 0) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream execution events"""
         from app.core.marc1.tool_registry import get_tool_registry
         
         state = initial_state.copy()
         registry = get_tool_registry()
         total_steps = len(self.tools)
+
+        # Get task ID for cancellation checking
+        task_id = state.get("context", {}).get("task_id") or state.get("task_id")
+
+        # Check if this is a resumed task that was already approved
+        is_resumed = state.get("metadata", {}).get("approved_at") is not None
         
-        for step, tool_config in enumerate(self.tools):
+        for step, tool_config in enumerate(self.tools[start_at:], start=start_at):
+            # **SIMPLIFIED: Direct database cancellation check**
+            if task_id and TaskStatusUtils.is_task_cancelled(task_id):
+                logger.info(f"Task {task_id} cancelled before executing tool {tool_config.get('name', 'unknown')}")
+                state["status"] = TaskStatus.CANCELED
+                state["error"] = "Task was cancelled by user"
+                yield state
+                return
+                
             # Update state with current step
             state["step"] = step
             state["total_steps"] = total_steps
@@ -62,18 +79,17 @@ class LinearWorkflow:
             # Prepare tool parameters
             parameters = tool_config.get("parameters", {})
             
-            # Check if this tool requires HITL approval
-            if self._requires_approval(tool_name, state):
+            # Update current tool info in state
+            state["current_tool"] = {
+                "name": tool_name,
+                "parameters": parameters
+            }
+            
+            # Check if this tool requires HITL approval - skip this check if task was already approved
+            if not is_resumed and self._requires_approval(tool_name, state):
                 state["status"] = TaskStatus.PAUSED
                 state["requires_approval"] = True
-                state["current_tool"] = {
-                    "name": tool_name,
-                    "parameters": parameters
-                }
                 yield state
-                
-                # Wait for approval (in a real implementation)
-                # For now, we just return and let the execution engine handle it
                 return
             
             # Execute tool
@@ -93,9 +109,27 @@ class LinearWorkflow:
                 logger.info(f"Executing tool: {tool_name}")
                 result = await tool.execute(tool_input)
                 
+                # **SIMPLIFIED: Check if tool returned cancellation status**
+                if result.get("status") == "CANCELED":
+                    state["status"] = TaskStatus.CANCELED
+                    state["error"] = result.get("error", "Task was cancelled")
+                    yield state
+                    return
+                
                 # Update state with result
-                state["status"] = result.get("status", TaskStatus.RUNNING)
-                state["outputs"] = result.get("outputs", {})
+                tool_status = result.get("status", TaskStatus.RUNNING)
+                
+                # Only update state status if tool failed, otherwise keep it as RUNNING
+                if tool_status == TaskStatus.FAILED:
+                    state["status"] = TaskStatus.FAILED
+                else:
+                    # Keep status as RUNNING until all tools complete
+                    state["status"] = TaskStatus.RUNNING
+                
+                if "outputs" not in state:
+                    state["outputs"] = {}
+                if result.get("outputs"):
+                    state["outputs"].update(result["outputs"])
                 state["error"] = result.get("error")
                 
                 # Yield updated state
@@ -112,10 +146,18 @@ class LinearWorkflow:
                 yield state
                 return
         
-        # All tools executed successfully
+        # **SIMPLIFIED: Final cancellation check before completion**
+        if task_id and TaskStatusUtils.is_task_cancelled(task_id):
+            logger.info(f"Task {task_id} cancelled before completion")
+            state["status"] = TaskStatus.CANCELED
+            state["error"] = "Task was cancelled by user"
+            yield state
+            return
+        
+        # All tools completed successfully
         state["status"] = TaskStatus.COMPLETED
         yield state
-    
+
     def _requires_approval(self, tool_name: str, state: Dict[str, Any]) -> bool:
         """
         Check if a tool requires HITL approval

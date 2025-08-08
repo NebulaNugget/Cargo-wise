@@ -93,59 +93,60 @@ class TaskRepository(BaseRepository[Task]):
         # Save updated state
         return await self.update_task_state(task_id, task.current_state)
     
-    async def approve_task(self, task_id: str, approval_data: Dict[str, Any], user_id: str = None) -> bool:
-        """Approve a paused task"""
+    async def approve_task(self, task_id: str, approval_data: Dict[str, Any] = None) -> bool:
+        """Approve a task that is pending human approval"""
         task = await self.get_task(task_id)
-        if not task or task.current_state.status != TaskStatus.PAUSED:
+        if not task:
             return False
-        
-        # Update state with approval
-        task.current_state.status = TaskStatus.APPROVED
+            
+        # Check if task is pending approval
+        if task.current_state.status != TaskStatus.PAUSED or not task.current_state.requires_approval:
+            return False
+            
+        # Update task state
+        task.current_state.status = TaskStatus.RUNNING
         task.current_state.requires_approval = False
-        task.current_state.approved_at = datetime.now().isoformat()
-        task.current_state.approved_by = user_id
-        
-        # Apply any parameter modifications
-        if "modified_parameters" in approval_data and approval_data["modified_parameters"]:
-            task.parameters.update(approval_data["modified_parameters"])
-        
-        # Apply any tool modifications
-        if "modified_tools" in approval_data and approval_data["modified_tools"]:
-            task.tools = approval_data["modified_tools"]
-        
-        # Update context with human input
-        if "context" in approval_data:
-            task.current_state.context.update(approval_data["context"])
         
         # Add approval metadata
-        task.current_state.metadata["approval_notes"] = approval_data.get("notes", "")
-        if "override_confidence" in approval_data:
-            task.current_state.metadata["override_confidence"] = approval_data["override_confidence"]
+        if not task.current_state.metadata:
+            task.current_state.metadata = {}
+            
+        task.current_state.metadata["approved_at"] = datetime.utcnow().isoformat()
         
-        # Save updated state
+        if approval_data:
+            task.current_state.metadata["approval_data"] = approval_data
+            
+        # Update task
         return await self.update_task(task)
     
-    async def reject_task(self, task_id: str, rejection_data: Dict[str, Any], user_id: str = None) -> bool:
-        """Reject a paused task"""
+    async def reject_task(self, task_id: str, rejection_data: Dict[str, Any] = None) -> bool:
+        """Reject a task that is pending human approval"""
         task = await self.get_task(task_id)
-        if not task or task.current_state.status != TaskStatus.PAUSED:
+        if not task:
             return False
-        
-        # Update state with rejection
+            
+        # Check if task is pending approval
+        if task.current_state.status != TaskStatus.PAUSED:
+            return False
+            
+        # Update task state
         task.current_state.status = TaskStatus.REJECTED
         task.current_state.requires_approval = False
-        task.current_state.rejection_reason = rejection_data.get("reason", "")
         
         # Add rejection metadata
-        task.current_state.metadata["rejection_timestamp"] = datetime.now().isoformat()
-        task.current_state.metadata["rejected_by"] = user_id
-        task.current_state.metadata["rejection_notes"] = rejection_data.get("notes", "")
-        task.current_state.metadata["trigger_alternative"] = rejection_data.get("trigger_alternative", False)
-        task.current_state.metadata["alternative_flow"] = rejection_data.get("alternative_flow")
+        if not task.current_state.metadata:
+            task.current_state.metadata = {}
+            
+        task.current_state.metadata["rejected_at"] = datetime.utcnow().isoformat()
         
-        # Save updated state
+        if rejection_data:
+            rejection_reason = rejection_data.get("reason", "Task rejected by user")
+            task.current_state.metadata["rejection_reason"] = rejection_reason
+            task.current_state.metadata["rejection_data"] = rejection_data
+        
+        # Update task
         return await self.update_task(task)
-  
+        
     async def count(self, query: Dict[str, Any] = None) -> int:
         """Count tasks matching the query"""
         return await self.collection.count_documents(query or {})
@@ -174,10 +175,11 @@ class TaskRepository(BaseRepository[Task]):
         
     async def get_pending_approval_tasks(self, limit: int = 100) -> List[Task]:
         """Get tasks pending human approval"""
-        return await self.list({
+        query = {
             "current_state.status": TaskStatus.PAUSED,
             "current_state.requires_approval": True
-        }, limit)
+        }
+        return await self.listAll(query, limit, 0, sort=[("created_at", -1)])
     
     async def add_feedback(self, task_id: str, feedback_data: Dict[str, Any]) -> bool:
         """Add feedback to a task"""

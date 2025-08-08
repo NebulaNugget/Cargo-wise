@@ -99,3 +99,16 @@ class Validator:
         # ISO 6346 format: 4 letters + 6 digits + 1 check digit
         pattern = r'^[A-Z]{4}\d{7}$'
         return bool(re.match(pattern, container))
+
+    @staticmethod
+    def diagnose_tool_validation_error(validation_errors: Dict[str, List[str]]) -> str:
+        """Generate diagnostic message for tool validation errors"""
+        if not validation_errors:
+            return "No validation errors found"
+        
+        messages = []
+        for tool_name, errors in validation_errors.items():
+            error_list = ", ".join(errors)
+            messages.append(f"{tool_name}: {error_list}")
+        
+        return f"Tool validation failed: {'; '.join(messages)}"

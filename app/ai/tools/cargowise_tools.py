@@ -55,7 +55,7 @@ class CargoWiseLoginTool(Marc1Tool):
         else:
             parameters = input.parameters
         # Get image paths from configuration
-        image_dir = os.path.join(os.getcwd(), "app", "resources", "images", "cargowise")
+        image_dir = os.path.join(os.getcwd(), "app",  "cargowise_images")
         
         # Load required images using the helper function
         login_button = get_image_base64("login_button.png", image_dir)
@@ -216,6 +216,208 @@ class CargoWiseLoginTool(Marc1Tool):
                 "error": f"Web login failed: {str(e)}"
             }
 
+class CargoWiseCreateShipmentTool(Marc1Tool):
+    name = "cargowise_create_shipment"
+    description = "Create a new shipment in CargoWise"
+    required_params = {
+        "weight": str,
+        "consignor": str,
+        "transport_method": str,
+        "description": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        """Execute create shipment using Robot Framework automation"""
+        try:
+            # Get parameters safely
+            parameters = self._get_parameters(input)
+            
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for shipment creation")
+            
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            
+            # Execute shipment creation using Robot Framework
+            result = await automation.create_shipment(
+                weight=parameters["weight"],
+                consignor=parameters["consignor"],
+                transport_method=parameters["transport_method"],
+                description=parameters["description"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "shipment_created": False,
+                        "weight": parameters["weight"],
+                        "consignor": parameters["consignor"],
+                        "transport_method": parameters["transport_method"],
+                        "description": parameters["description"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "shipment_created": result.get("success", False),
+                    "weight": parameters["weight"],
+                    "consignor": parameters["consignor"],
+                    "transport_method": parameters["transport_method"],
+                    "description": parameters["description"]
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise create shipment tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
+class CargoWiseSearchShipmentByHousebillTool(Marc1Tool):
+    name = "cargowise_search_shipment_by_housebill"
+    description = "Search for a shipment in CargoWise using housebill number"
+    required_params = {"housebill": str}
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        try:
+            parameters = self._get_parameters(input)
+            logger.info("Using CargoWise Robot Framework automation for shipment search by housebill")
+            
+            # Use the Robot Framework automation
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            result = await automation.search_shipment_by_housebill(
+                housebill=parameters["housebill"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "shipment_found": False,
+                        "housebill": parameters["housebill"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "shipment_found": result.get("success", False),
+                    "housebill": parameters["housebill"],
+                    "search_results": result.get("outputs", {}),
+                    "shipment_id": f"SHIP-{parameters['housebill']}"
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise search shipment by housebill tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
+class CargoWiseCreateConsolidationTool(Marc1Tool):
+    name = "cargowise_create_consolidation"
+    description = "Create a new consolidation in CargoWise with transport, container mode, load details, voyage info, dates, BOL, and vessel"
+    required_params = {
+        "transport": str, 
+        "container_mode": str,
+        "first_load": str,
+        "last_load": str,
+        "voyage": str,
+        "etd": str,
+        "eta": str,
+        "bol": str,
+        "vessel": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        # Get parameters safely
+        try:
+            parameters = self._get_parameters(input)
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for consolidation creation")
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            # Execute consolidation creation using Robot Framework
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            result = await automation.create_consolidation(
+                transport=parameters["transport"],
+                container_mode=parameters["container_mode"],
+                first_load=parameters["first_load"],
+                last_load=parameters["last_load"],
+                voyage=parameters["voyage"],
+                etd=parameters["etd"],
+                eta=parameters["eta"],
+                bol=parameters["bol"],
+                vessel=parameters["vessel"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "consolidation_created": False,
+                        "transport": parameters["transport"],
+                        "container_mode": parameters["container_mode"],
+                        "first_load": parameters["first_load"],
+                        "last_load": parameters["last_load"],
+                        "voyage": parameters["voyage"],
+                        "etd": parameters["etd"],
+                        "eta": parameters["eta"],
+                        "bol": parameters["bol"],
+                        "vessel": parameters["vessel"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "consolidation_created": result.get("success", False),
+                    "transport": parameters["transport"],
+                    "container_mode": parameters["container_mode"],
+                    "first_load": parameters["first_load"],
+                    "last_load": parameters["last_load"],
+                    "voyage": parameters["voyage"],
+                    "etd": parameters["etd"],
+                    "eta": parameters["eta"],
+                    "bol": parameters["bol"],
+                    "vessel": parameters["vessel"],
+                    "consolidation_id": f"CONS-{parameters['voyage']}-{parameters['vessel']}"
+                },
+                "error": result.get("error")
+            }   
+        
+        
+        except Exception as e:
+            logger.exception("Error in CargoWise create consolidation tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
 
 class CargoWiseSearchBookingTool(Marc1Tool):
     name = "cargowise_search_booking"
@@ -272,134 +474,6 @@ class CargoWiseSearchBookingTool(Marc1Tool):
                 "booking_reference": input.parameters["booking_reference"],
                 "search_completed": True
             }
-        }
-
-
-class CargoWiseCreateBookingTool(Marc1Tool):
-    name = "cargowise_create_booking"
-    description = "Create a new booking in CargoWise"
-    # required_params = {
-    #     "customer_reference": str,
-    #     "origin": str,
-    #     "destination": str,
-    #     "cargo_type": str
-    # }
-    required_params = {
-        "customer": str,  # Changed from customer_reference
-        "origin": str,
-        "destination": str,
-        "cargo_details": str  # Changed from cargo_type
-    }
-
-    async def _execute(self, input: ToolNodeInput) -> dict:
-        # Implementation for creating a new booking
-        click_tool = ClickImageTool()
-        type_tool = TypeTextTool()
-        
-        # Get image paths
-        image_dir = os.path.join(os.getcwd(), "app", "resources", "images", "cargowise")
-        
-        with open(os.path.join(image_dir, "new_booking_button.png"), "rb") as f:
-            new_booking_button = base64.b64encode(f.read()).decode('utf-8')
-            
-        with open(os.path.join(image_dir, "customer_ref_field.png"), "rb") as f:
-            customer_ref_field = base64.b64encode(f.read()).decode('utf-8')
-            
-        with open(os.path.join(image_dir, "origin_field.png"), "rb") as f:
-            origin_field = base64.b64encode(f.read()).decode('utf-8')
-            
-        with open(os.path.join(image_dir, "destination_field.png"), "rb") as f:
-            destination_field = base64.b64encode(f.read()).decode('utf-8')
-            
-        with open(os.path.join(image_dir, "cargo_type_field.png"), "rb") as f:
-            cargo_type_field = base64.b64encode(f.read()).decode('utf-8')
-            
-        with open(os.path.join(image_dir, "save_button.png"), "rb") as f:
-            save_button = base64.b64encode(f.read()).decode('utf-8')
-        
-        # Click new booking button
-        await click_tool.execute({
-            "parameters": {
-                "image_base64": new_booking_button,
-                "timeout": 10
-            }
-        })
-        
-        # Fill customer reference
-        await click_tool.execute({
-            "parameters": {
-                "image_base64": customer_ref_field,
-                "timeout": 5
-            }
-        })
-        
-        await type_tool.execute({
-            "parameters": {
-                # "text": input.parameters["customer_reference"]
-                "text": input.parameters["customer"]
-            }
-        })
-        
-        # Fill origin
-        await click_tool.execute({
-            "parameters": {
-                "image_base64": origin_field,
-                "timeout": 5
-            }
-        })
-        
-        await type_tool.execute({
-            "parameters": {
-                "text": input.parameters["origin"]
-            }
-        })
-        
-        # Fill destination
-        await click_tool.execute({
-            "parameters": {
-                "image_base64": destination_field,
-                "timeout": 5
-            }
-        })
-        
-        await type_tool.execute({
-            "parameters": {
-                "text": input.parameters["destination"]
-            }
-        })
-        
-        # Fill cargo type
-        await click_tool.execute({
-            "parameters": {
-                "image_base64": cargo_type_field,
-                "timeout": 5
-            }
-        })
-        
-        await type_tool.execute({
-            "parameters": {
-                # "text": input.parameters["cargo_type"]
-                "text": input.parameters["cargo_details"]
-            }
-        })
-        
-        # Save booking
-        save_result = await click_tool.execute({
-            "parameters": {
-                "image_base64": save_button,
-                "timeout": 5
-            }
-        })
-        
-        return {
-            "status": "SUCCESS" if save_result.get("status") == "SUCCESS" else "ERROR",
-            "outputs": {
-                "booking_created": save_result.get("status") == "SUCCESS",
-                "customer_reference": input.parameters["customer_reference"],
-                "origin": input.parameters["origin"],
-                "destination": input.parameters["destination"]
-            },
-            "error": save_result.get("error")
         }
 
 

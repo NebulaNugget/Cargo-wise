@@ -82,7 +82,7 @@ class NLPQueryProcessor:
                 logger.info(f"Task {task_id} paused due to parameter validation errors")
             else:
                 # Update task status based on confidence
-                if intent.confidence < 0.5:
+                if intent.confidence < 0.9:
                     # Low confidence - require human approval
                     task.current_state.status = TaskStatus.PAUSED
                     task.current_state.requires_approval = True
@@ -98,7 +98,7 @@ class NLPQueryProcessor:
             await self.task_repo.update_task(task)
             
             # If confidence is high enough and no validation errors, start execution
-            if intent.confidence >= 0.5 and not validation_errors:
+            if intent.confidence >= 0.9 and not validation_errors:
                 # This would typically be done by a background worker
                 # For now, we'll just log that it would happen
                 logger.info(f"Task {task_id} would now be executed by background worker")
@@ -194,8 +194,8 @@ class NLPQueryProcessor:
             "login": [{"name": "cargowise_login", "parameters": {}}],
             "search": [{"name": "cargowise_search_booking", "parameters": {}}],
             "find": [{"name": "cargowise_search_booking", "parameters": {}}],
-            "create": [{"name": "cargowise_create_booking", "parameters": {}}],
-            "make": [{"name": "cargowise_create_booking", "parameters": {}}],
+           
+            
             "track": [{"name": "cargowise_track_shipment", "parameters": {}}],
             "update": [{"name": "cargowise_update_booking", "parameters": {}}],
             "modify": [{"name": "cargowise_update_booking", "parameters": {}}],
