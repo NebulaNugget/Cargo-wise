@@ -86,6 +86,20 @@ class IntentParser:
                 },
                 "confidence": high_confidence
             },
+            "search_consolidation_by_referencenumber": {
+                "patterns": [
+                    r"(?i)search\s+(?:for\s+)?(?:a\s+)?consolidation\s+(?:by\s+)?referencenumber",
+                    r"(?i)find\s+(?:a\s+)?consolidation\s+(?:by\s+)?referencenumber",
+                    r"(?i)look\s+(?:up|for)\s+(?:a\s+)?consolidation\s+(?:by\s+)?referencenumber",
+                    r"(?i)search\s+referencenumber",
+                    r"(?i)find\s+referencenumber"
+                ],
+                "param_patterns": {
+                    "referencenumber": r"(?i)(?:referencenumber|reference\s+number|rfn)[:\s]+([^\s,]+)",
+                    "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
+                },
+                "confidence": high_confidence
+            },
             "create_consolidation": {
                 "patterns": [
                     r"(?i)create\s+(?:a\s+)?(?:new\s+)?consolidation",
@@ -280,6 +294,7 @@ class IntentParser:
                     }
                 }
             ],
+
             "search_shipment_by_housebill":[
                 {
                     "name": "cargowise_login",
@@ -295,6 +310,25 @@ class IntentParser:
                     "description": "Search for a shipment by housebill in CargoWise",
                     "parameters": {
                         "housebill": intent.parameters.get("housebill", "${housebill}")
+                    }
+                }
+            ],
+
+            "search_consolidation_by_referencenumber":[
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": intent.parameters.get("login_password", "${password}"),
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_search_consolidation_by_referencenumber",
+                    "description": "Search for a consolidation in CargoWise",
+                    "parameters": {
+                        "housebill": intent.parameters.get("referencenumber", "${housebill}")
                     }
                 }
             ],

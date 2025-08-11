@@ -10,6 +10,7 @@ from app.ai.tools.cargowise_tools import (
     CargoWiseCreateShipmentTool,
     CargoWiseCreateConsolidationTool,
     CargoWiseSearchShipmentByHousebillTool,
+    CargoWiseSearchConsolidationByReferenceNumberTool,
     CargoWiseGenerateReportTool
 )
 # Import the new Robot Framework-based tools
@@ -226,6 +227,25 @@ class ToolRegistry:
                     }
                 }
             ],
+
+            "search_consolidation_by_referencenumber": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": "${login_password}",
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_search_consolidation_by_referencenumber",
+                    "description": "Search for a consolidation by reference number",
+                    "parameters": {
+                        "referencenumber": "${referencenumber}"
+                    }
+                }
+            ],
             "create_consolidation": [
                 {
                     "name": "cargowise_login",
@@ -369,7 +389,7 @@ def get_tool_registry():
     if not registry._tools:
         logger.info("Registering Robot Framework-based CargoWise tools")
         registry.register_tool(CargoWiseLoginTool)
-        
+        registry.register_tool(CargoWiseSearchConsolidationByReferenceNumberTool)
         registry.register_tool(CargoWiseSearchBookingTool)
         registry.register_tool(CargoWiseCreateConsolidationTool)
         registry.register_tool(CargoWiseSearchShipmentByHousebillTool,)

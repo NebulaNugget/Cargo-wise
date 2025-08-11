@@ -214,6 +214,83 @@ Search Shipment By Housebill
                 }
             raise
 
+    async def search_consolidation_by_referencenumber(self, referencenumber: str) -> Dict[str, Any]:
+        """Search for consolidation by reference number"""
+        # Check for cancellation before starting
+        await self._check_cancellation()
+        
+        robot_script = """
+*** Settings ***
+Library    SikuliLibrary
+
+*** Variables ***
+${IMAGE_DIR}    ${CURDIR}/cargowise_images
+${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
+
+*** Test Cases ***
+Search Consolidation By Reference Number
+    [Documentation]    Search for consolidation by reference number in CargoWise
+    
+    # Enter reference number
+    Input Text    ${IMAGE_DIR}/search_consolidation2.png    ${REFERENCENUMBER}
+    Sleep    5s
+    Click    ${IMAGE_DIR}/select_consolidation.png
+    Sleep    20s
+    Click    ${IMAGE_DIR}/consolidation_route.png
+    Sleep    5s
+    Click    ${IMAGE_DIR}/consolidation_container.png
+    Sleep    5s
+    Click    ${IMAGE_DIR}/close.png
+    Sleep    3s
+    Click    ${IMAGE_DIR}/close-cargowise2.png
+    Sleep    3s
+
+    Click    ${IMAGE_DIR}/wisecloud-logo.png
+    Sleep    2s
+    Click    ${IMAGE_DIR}/close-wisetech-white.png
+    Sleep    2s
+    Click    ${IMAGE_DIR}/close-wisetech.png
+    
+    Log    Search completed for reference number: ${REFERENCENUMBER}
+"""
+        
+        variables = {
+            'REFERENCENUMBER': referencenumber,
+            'SCREENSHOT_DIR': str(self.screenshot_dir)
+        }
+        
+        try:
+            result = await self.driver.execute_robot_script(
+                robot_script, 
+                variables=variables,
+                task_id=self.task_id
+            )
+            
+            # Check for cancellation after execution
+            await self._check_cancellation()
+            
+            return {
+                "success": result["success"],
+                "status": "SUCCESS" if result["success"] else "ERROR",
+                "outputs": {
+                    "consolidation_found": result["success"],
+                    "referencenumber": referencenumber,
+                    "robot_output": result.get("output", ""),
+                    "screenshot_dir": str(self.screenshot_dir)
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            if "cancelled" in str(e).lower():
+                return {
+                    "status": "CANCELED",
+                    "success": False,
+                    "outputs": {},
+                    "error": "Task was cancelled by user"
+                }
+            raise
+
     async def create_shipment(self, weight: str, consignor: str, transport_method: str, description: str) -> Dict[str, Any]:
         """Create new shipment"""
         # Check for cancellation before starting
@@ -270,8 +347,13 @@ Create New Shipment
     Click    ${IMAGE_DIR}/save-close-btn.png
     Sleep    15s
 
-    Click    ${IMAGE_DIR}/operate-white-background.png
-    Sleep    5s
+    Double Click    ${IMAGE_DIR}/minimise-shipment.png
+    Sleep    2s
+
+    Click    ${IMAGE_DIR}/cargowise-exit-white.png
+    Sleep    2s
+
+    
 
     Click    ${IMAGE_DIR}/exit-cargowise-btn.png
     Sleep    25s

@@ -300,6 +300,39 @@ class CargoWiseSearchShipmentByHousebillTool(Marc1Tool):
                 }
 
 
+class CargoWiseSearchConsolidationByReferenceNumberTool(Marc1Tool):
+    """Tool for searching a consolidation by referencenumber in CargoWise"""
+    name = "cargowise_search_consolidation_by_referencenumber"
+    description = "Search for a consolidation by referencenumber in CargoWise"
+    required_params = {
+        "referencenumber": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
+        """" Execute search_consolidation tool"""
+        try:
+            automation = CargoWiseAutomation()
+            result = await automation.search_consolidation_by_referencenumber(
+                referencenumber=input.parameters["referencenumber"],
+            )
+            return{
+                "status": "COMPLETED" if result["success"] else "FAILED",
+                "outputs": {
+                    "consolidation_found": result["success"],
+                    "referencenumber": input.parameters["referencenumber"]
+                },
+                "error": result.get("error")
+
+            }
+    
+        except Exception as e:
+                logger.exception("Error in CargoWise search consolidation by referencenumber tool")
+                return {
+                    "status": "FAILED",
+                    "outputs": {},
+                    "error": str(e)
+                }
+
 
 class CargoWiseCreateShipmentTool(Marc1Tool):
     """Tool for creating a shipment in CargoWise"""

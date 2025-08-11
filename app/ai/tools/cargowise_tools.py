@@ -334,6 +334,56 @@ class CargoWiseSearchShipmentByHousebillTool(Marc1Tool):
                 "error": str(e)
             }
 
+class CargoWiseSearchConsolidationByReferenceNumberTool(Marc1Tool):
+    name = "cargowise_search_consolidation_by_referencenumber"
+    description = "Search for a consolidation in CargoWise using reference number"
+    required_params = {"referencenumber": str}
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        try:
+            parameters = self._get_parameters(input)
+            logger.info("Using CargoWise Robot Framework automation for consolidation search by reference number")
+            
+            # Use the Robot Framework automation
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            result = await automation.search_consolidation_by_referencenumber(
+                referencenumber=parameters["referencenumber"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "consolidation_found": False,
+                        "referencenumber": parameters["referencenumber"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "consolidation_found": result.get("success", False),
+                    "referencenumber": parameters["referencenumber"],
+                    "search_results": result.get("outputs", {}),
+                    "consolidation_id": f"CONS-{parameters['referencenumber']}"
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise search consolidation by reference number tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
 class CargoWiseCreateConsolidationTool(Marc1Tool):
     name = "cargowise_create_consolidation"
     description = "Create a new consolidation in CargoWise with transport, container mode, load details, voyage info, dates, BOL, and vessel"
