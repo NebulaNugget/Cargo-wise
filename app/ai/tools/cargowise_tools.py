@@ -469,6 +469,74 @@ class CargoWiseCreateConsolidationTool(Marc1Tool):
                 "error": str(e)
             }
 
+class CargoWiseCreateOrderTool(Marc1Tool):
+    name = "cargowise_create_order"
+    description = "Create a new order in CargoWise"
+    required_params = {
+        "buyer": str,
+        "supplier": str,
+        "container_return_date": str,
+        "sanction": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        """Execute create order using Robot Framework automation"""
+        try:
+            # Get parameters safely
+            parameters = self._get_parameters(input)
+            
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for order creation")
+            
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            
+            # Execute order creation using Robot Framework
+            result = await automation.create_order(
+                buyer=parameters["buyer"],
+                supplier=parameters["supplier"],
+                container_return_date=parameters["container_return_date"],
+                sanction=parameters["sanction"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "order_created": False,
+                        "buyer": parameters["buyer"],
+                        "supplier": parameters["supplier"],
+                        "container_return_date": parameters["container_return_date"],
+                        "sanction": parameters["sanction"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "order_created": result.get("success", False),
+                    "buyer": parameters["buyer"],
+                    "supplier": parameters["supplier"],
+                    "container_return_date": parameters["container_return_date"],
+                    "sanction": parameters["sanction"]
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise create order tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
 class CargoWiseSearchBookingTool(Marc1Tool):
     name = "cargowise_search_booking"
     description = "Search for a booking in CargoWise"

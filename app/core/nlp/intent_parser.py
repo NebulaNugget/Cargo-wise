@@ -135,6 +135,22 @@ class IntentParser:
                 },
                 "confidence": 0.7
             },
+            "create_order": {
+                "patterns": [
+                    r"(?i)create\s+(?:a\s+)?(?:new\s+)?order",
+                    r"(?i)make\s+(?:a\s+)?(?:new\s+)?order",
+                    r"(?i)add\s+(?:a\s+)?(?:new\s+)?order",
+                    r"(?i)new\s+order"
+                ],
+                "param_patterns": {
+                    "buyer": r"(?i)(?:buyer|customer)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "supplier": r"(?i)(?:supplier|vendor)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "container_return_date": r"(?i)(?:container\s+return\s+date|return\s+date)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "sanction": r"(?i)sanction[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
+                    "login_password": r"(?i)(?:password|pass)[:\s]+([^\s,]+)"
+                },
+                "confidence": high_confidence
+            },
             
         }
     
@@ -249,6 +265,27 @@ class IntentParser:
                     "description": "Search for a booking in CargoWise",
                     "parameters": {
                         "booking_reference": intent.parameters.get("booking_reference", "${booking_reference}")
+                    }
+                }
+            ],
+            "create_order": [
+                {
+                    "name": "cargowise_login",
+                    "description": "Log into CargoWise",
+                    "parameters": {
+                        "username": "${username}",
+                        "password": intent.parameters.get("login_password", "${password}"),
+                        "environment": "desktop"
+                    }
+                },
+                {
+                    "name": "cargowise_create_order",
+                    "description": "Create a new order in CargoWise",
+                    "parameters": {
+                        "buyer": intent.parameters.get("buyer", "${buyer}"),
+                        "supplier": intent.parameters.get("supplier", "${supplier}"),
+                        "container_return_date": intent.parameters.get("container_return_date", "${container_return_date}"),
+                        "sanction": intent.parameters.get("sanction", "${sanction}")
                     }
                 }
             ],

@@ -195,7 +195,7 @@ class NLPQueryProcessor:
             "search": [{"name": "cargowise_search_booking", "parameters": {}}],
             "find": [{"name": "cargowise_search_booking", "parameters": {}}],
            
-            
+            "create": [{"name": "cargowise_create_order", "parameters": {}}],
             "track": [{"name": "cargowise_track_shipment", "parameters": {}}],
             "update": [{"name": "cargowise_update_booking", "parameters": {}}],
             "modify": [{"name": "cargowise_update_booking", "parameters": {}}],

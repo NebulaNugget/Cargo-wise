@@ -8,6 +8,8 @@ from datetime import datetime
 import traceback
 from app.utils.logging import log_task_event, LogLevel, log_exception, log_to_file, LogSource
 logger = logging.getLogger(__name__)
+from app.utils.application_closer import close_cargowise
+from app.utils.remote_connection_manager import disconnect_remote_connections
 
 class ExecutionEngine:
     def __init__(self, task_registry=None):
@@ -245,6 +247,53 @@ class ExecutionEngine:
             yield state
             return
 
+        finally:
+            # **MOVE CLEANUP CODE HERE - ALWAYS EXECUTES**
+            try:
+                logger.info(f"Starting cleanup for task {task.id} (status: {getattr(state, 'status', 'UNKNOWN')})")
+                
+                # Close CargoWise application
+                cargowise_result = close_cargowise()
+                logger.info(f"CargoWise cleanup result: {cargowise_result['message']}")
+                
+                # Disconnect remote connections
+                remote_result = disconnect_remote_connections()
+                logger.info(f"Remote connections cleanup result: {remote_result['message']}")
+                
+                # Add cleanup results to task metadata (if state exists)
+                if 'state' in locals() and hasattr(state, 'metadata'):
+                    state.metadata["cleanup_results"] = {
+                        "cargowise_cleanup": cargowise_result,
+                        "remote_cleanup": remote_result,
+                        "cleanup_timestamp": datetime.utcnow().isoformat()
+                    }
+                
+                # Log cleanup completion
+                if 'task' in locals():
+                    await log_task_event(
+                        task_id=task.id,
+                        event="Post-execution cleanup completed",
+                        metadata={
+                            "cargowise_closed": cargowise_result['success'],
+                            "remote_disconnected": remote_result['success']
+                        }
+                    )
+                
+            except Exception as cleanup_error:
+                logger.error(f"Error during cleanup for task {getattr(task, 'id', 'unknown')}: {str(cleanup_error)}")
+                # Don't fail the task due to cleanup errors, just log them
+                if 'state' in locals() and hasattr(state, 'metadata'):
+                    state.metadata["cleanup_error"] = {
+                        "error": str(cleanup_error),
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                
+                if 'task' in locals():
+                    await log_task_event(
+                        task_id=task.id,
+                        event=f"Cleanup failed: {str(cleanup_error)}",
+                        level=LogLevel.ERROR
+                    )
         # Calculate execution time
         execution_end_time = datetime.utcnow()
         execution_time_seconds = (execution_end_time - execution_start_time).total_seconds()
@@ -281,6 +330,8 @@ class ExecutionEngine:
             )
         else:
             logger.error(f"Task {task.id} failed after {execution_time_seconds:.2f} seconds")
+        
+
         
         yield state  # Final state
 
@@ -632,56 +683,7 @@ class ExecutionEngine:
         
         return state
 
-    # # Add a new method to cancel a task
-    # async def cancel_task(self, task_id: str) -> TaskState:
-    #     """Cancel a running task"""
-    #     logger.info(f"Cancelling task {task_id}")
-    #     # **ADD THIS: Mark task as cancelled in memory**
-    #     self._cancelled_tasks.add(task_id)
-    #     # Check if task is in paused tasks
-    #     if task_id in self._paused_tasks:
-    #         del self._paused_tasks[task_id]
-    #         logger.info(f"Removed paused task {task_id}")
-        
-    #     # Create cancellation state
-    #     cancellation_time = datetime.utcnow()
-        
-    #     # Try to cancel any running automation processes
-    #     try:
-    #         # Import here to avoid circular imports
-    #         from app.automation.robot.cargowise_automation import CargoWiseAutomation
-    #         from app.ai.tools.browser_tools import BrowserSessionManager
-            
-    #         # Cancel CargoWise automation if running
-    #         cw_automation = CargoWiseAutomation()
-    #         await cw_automation.cancel_automation()
-            
-    #         # Close any browser sessions
-    #         await BrowserSessionManager.cleanup()
-            
-    #         logger.info(f"Successfully cancelled automation processes for task {task_id}")
-    #     except Exception as e:
-    #         logger.error(f"Error cancelling automation processes for task {task_id}: {str(e)}")
-        
-    #     # Create cancellation state
-    #     cancel_state = TaskState(
-    #         task_id=task_id,
-    #         status=TaskStatus.CANCELED,  # Make sure this status exists in your TaskStatus enum
-    #         metadata={
-    #             "cancelled_at": cancellation_time.isoformat(),
-    #             "cancellation_reason": "User requested cancellation"
-    #         }
-    #     )
-    #     # **FIX: Schedule cleanup after a delay to ensure cancellation is processed**
-    #     async def cleanup_after_delay():
-    #         await asyncio.sleep(5)  # Wait 5 seconds
-    #         if task_id in self._cancelled_tasks:
-    #             self._cancelled_tasks.discard(task_id)
-    #             logger.info(f"Cleaned up cancelled task {task_id} after delay")
-        
-    #     asyncio.create_task(cleanup_after_delay())
-    #     return cancel_state
-    # g
+    
     async def cancel_task(self, task_id: str) -> TaskState:
         """Cancel a running task"""
         logger.info(f"Cancelling task {task_id}")

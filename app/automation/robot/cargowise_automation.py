@@ -88,7 +88,7 @@ Login to cargowise cloud
     Sleep    10s
     Double Click    ${IMAGE_DIR}/org-logo.png
     
-    Sleep    55s
+    Sleep    60s
 
     Click    ${IMAGE_DIR}/cargowise-next-password.png
     Input Text    ${IMAGE_DIR}/cargowise-next-password.png    ${PASSWORD}
@@ -135,7 +135,92 @@ Login to cargowise cloud
                 }
             raise
 
+    async def create_order(self, buyer: str, supplier: str, container_return_date: str, sanction: str) -> Dict[str, Any]:
+        """Create new order"""
+        # Check for cancellation before starting
+        await self._check_cancellation()
+        robot_script = """
+*** Settings ***
+Library    SikuliLibrary
 
+*** Variables ***
+${IMAGE_DIR}    ${CURDIR}/cargowise_images
+${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
+
+*** Test Cases ***
+Create New Order
+    [Documentation]    Create a new order in CargoWise
+    
+    # Click New Order
+    Click    ${IMAGE_DIR}/operate-btn.png
+    Sleep    3s
+    Click    ${IMAGE_DIR}/forwarding-btn.png
+    Sleep    3s
+    Click    ${IMAGE_DIR}/order.png
+    Sleep    7s
+    Click    ${IMAGE_DIR}/new-btn.png
+    Sleep    7s
+    Input Text    ${IMAGE_DIR}/order-buyer.png    ${BUYER}
+    Sleep    3s
+    Input Text    ${IMAGE_DIR}/order-supplier.png    ${SUPPLIER}
+    Sleep    3s
+    Click    ${IMAGE_DIR}/order-additional-detail.png
+    Sleep    2s
+    Input Text    ${IMAGE_DIR}/order-empty-return-date.png    ${CONTAINER_RETURN_DATE}
+    Sleep    3s
+    Input Text    ${IMAGE_DIR}/order-sanction.png    ${SANCTION}
+    Sleep    3s
+    Click    ${IMAGE_DIR}/save-close-order.png
+    Sleep    2s
+    Click    ${IMAGE_DIR}/order-no2.png
+    Sleep    5s
+    Click    ${IMAGE_DIR}/exit-both.png
+    Sleep    7s
+    Click    ${IMAGE_DIR}/close-wisetech.png
+    Click    ${IMAGE_DIR}/close-wisetech.png
+
+    
+    Log    Order created successfully
+"""
+        
+        variables = {
+            'BUYER': buyer,
+            'SUPPLIER': supplier, 
+            'CONTAINER_RETURN_DATE': container_return_date,
+            'SANCTION': sanction,
+            'SCREENSHOT_DIR': str(self.screenshot_dir)
+        }
+        
+        try:
+            result = await self.driver.execute_robot_script(
+                robot_script, 
+                variables=variables,
+                task_id=self.task_id
+            )
+            
+            # Check for cancellation after execution
+            await self._check_cancellation()
+            
+            return {
+                "success": result["success"],
+                "status": "SUCCESS" if result["success"] else "ERROR",
+                "outputs": {
+                    "order_created": result["success"],
+                    "robot_output": result.get("output", ""),
+                    "screenshot_dir": str(self.screenshot_dir)
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            if "cancelled" in str(e).lower():
+                return {
+                    "status": "CANCELED",
+                    "success": False,
+                    "outputs": {},
+                    "error": "Task was cancelled by user"
+                }
+            raise
     async def search_shipment_by_housebill(self, housebill: str) -> Dict[str, Any]:
         """Search for shipment by housebill number"""
         # Check for cancellation before starting
@@ -334,6 +419,7 @@ Create New Shipment
 
     # Fill weight
     Click    ${IMAGE_DIR}/weight-btn.png
+    Sleep    2s
     Input Text    ${IMAGE_DIR}/weight-btn.png    ${WEIGHT}
     Sleep    3s
   
@@ -348,7 +434,7 @@ Create New Shipment
     Sleep    15s
 
     Double Click    ${IMAGE_DIR}/minimise-shipment.png
-    Sleep    2s
+    Sleep    4s
 
     Click    ${IMAGE_DIR}/cargowise-exit-white.png
     Sleep    2s
@@ -432,18 +518,23 @@ Create New Booking
     # Fill customer
     Click    ${IMAGE_DIR}/customer_field.png
     Input Text    ${CUSTOMER}
+    Sleep    1s
+
     
     # Fill origin
     Click    ${IMAGE_DIR}/origin_field.png  
     Input Text    ${ORIGIN}
+    Sleep    1s
     
     # Fill destination
     Click    ${IMAGE_DIR}/destination_field.png
     Input Text    ${DESTINATION}
+    Sleep    1s
     
     # Fill cargo details
     Click    ${IMAGE_DIR}/cargo_field.png
     Input Text    ${CARGO_DETAILS}
+    Sleep    1s
     
     # Save booking
     Click    ${IMAGE_DIR}/save_button.png
@@ -521,8 +612,6 @@ Create New Consolidation
     Input Text    ${IMAGE_DIR}/etd2.png    ${ETD}
     Sleep    3s
 
-    # Fill ETA
-    
     Input Text    ${IMAGE_DIR}/eta.png    ${ETA}
     Sleep    3s
 
@@ -531,27 +620,20 @@ Create New Consolidation
     Input Text    ${IMAGE_DIR}/first-load.png    ${FIRST_LOAD}
     Sleep    3s
 
-    # Fill BOL
+  
     
     Input Text    ${IMAGE_DIR}/bol.png    ${BOL}
-    Sleep    3s
+    Sleep    5s
     
     Click    ${IMAGE_DIR}/unlink-vessel.png
     Sleep    3s
     
    
     Click    ${IMAGE_DIR}/save-close-consolidation3.png
+
     Sleep    10s
 
-    Click    ${IMAGE_DIR}/operate-white-background.png
-    Sleep    3s
-
-    Click    ${IMAGE_DIR}/exit-cargowise-btn.png
-    Sleep    2s
-
-    Click    ${IMAGE_DIR}/exit-wisetech-btn.png
-    Sleep    2s
-    Click    ${IMAGE_DIR}/exit-wisetech-red-btn.png
+    
     
     Log    Consolidation created successfully
 """

@@ -7,6 +7,9 @@ from app.core.marc1.execution_engine import ExecutionEngine
 from app.core.marc1.task_manager import TaskManager
 from app.core.marc1.tool_registry import get_tool_registry
 from app.dependencies import get_db
+from app.utils.logging import log_task_event, LogLevel
+from app.utils.application_closer import close_cargowise
+from app.utils.remote_connection_manager import disconnect_remote_connections
 # Add this import at the top of the file
 from fastapi.encoders import jsonable_encoder
 from typing import Dict, Any, List, Optional
@@ -563,36 +566,7 @@ async def cancel_task(
     except Exception as e:
         logger.error(f"Error during automation cancellation: {str(e)}")
 
-    # # Check if task can be cancelled
-    # if task.current_state.status not in [TaskStatus.RUNNING, TaskStatus.PAUSED]:
-    #     raise HTTPException(
-    #         status_code=400,
-    #         detail=f"Task cannot be cancelled: {task_id} (status: {task.current_state.status})"
-    #     )
     
-    # # Cancel task
-    # cancel_state = await execution_engine.cancel_task(task_id)
-    
-    
-    
-    # # Notify WebSocket clients
-    # await notify_task_update(task)
-    
-    # # Also try to cancel any running automation
-    # try:
-    #     # Import automation components
-    #     from app.automation.robot.cargowise_automation import CargoWiseAutomation
-    #     from app.ai.tools.browser_tools import BrowserSessionManager
-        
-    #     # Cancel CargoWise automation
-    #     cw_automation = CargoWiseAutomation(task_id=task_id)
-    #     await cw_automation.cancel_automation()
-        
-    #     # Close browser sessions
-    #     await BrowserSessionManager.cleanup()
-    # except Exception as e:
-    #     logger.error(f"Error during automation cancellation: {str(e)}")
-    # Notify WebSocket clients
     await notify_task_update(task)
     return task
 @router.post("/{task_id}/approve", response_model=Task)
@@ -938,6 +912,36 @@ async def execute_task_background(task_id: str, db):
         await task_repo.update_task(task)
         await notify_task_update(task)
     finally:
+        print('about to cleanup')
+        # **ADD CLEANUP CODE HERE**
+        try:
+            logger.info(f"Starting cleanup for task {task_id}")
+            print(f"Starting cleanup for task {task_id}")
+            # Close CargoWise application
+            cargowise_result = close_cargowise()
+            logger.info(f"CargoWise cleanup result: {cargowise_result['message']}")
+            
+            # Disconnect remote connections
+            remote_result = disconnect_remote_connections()
+            logger.info(f"Remote connections cleanup result: {remote_result['message']}")
+            
+            # Log cleanup completion
+            await log_task_event(
+                task_id=task_id,
+                event="Post-execution cleanup completed",
+                metadata={
+                    "cargowise_closed": cargowise_result['success'],
+                    "remote_disconnected": remote_result['success']
+                }
+            )
+            
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup for task {task_id}: {str(cleanup_error)}")
+            await log_task_event(
+                task_id=task_id,
+                event=f"Cleanup failed: {str(cleanup_error)}",
+                level=LogLevel.ERROR
+            )
         # **FIX: Remove task from running set**
         _running_tasks.remove(task_id)
 
@@ -1000,3 +1004,35 @@ async def resume_task_background(task_id: str, db):
         
         # Notify WebSocket clients
         await notify_task_update(task)
+    
+    finally:
+        print('about to cleanup in resume_task_background')
+        # **ADD CLEANUP CODE HERE - SAME AS IN execute_task_background**
+        try:
+            logger.info(f"Starting cleanup for resumed task {task_id}")
+            print(f"Starting cleanup for resumed task {task_id}")
+            # Close CargoWise application
+            cargowise_result = close_cargowise()
+            logger.info(f"CargoWise cleanup result: {cargowise_result['message']}")
+            
+            # Disconnect remote connections
+            remote_result = disconnect_remote_connections()
+            logger.info(f"Remote connections cleanup result: {remote_result['message']}")
+            
+            # Log cleanup completion
+            await log_task_event(
+                task_id=task_id,
+                event="Post-execution cleanup completed (resumed task)",
+                metadata={
+                    "cargowise_closed": cargowise_result['success'],
+                    "remote_disconnected": remote_result['success']
+                }
+            )
+            
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup for resumed task {task_id}: {str(cleanup_error)}")
+            await log_task_event(
+                task_id=task_id,
+                event=f"Cleanup failed: {str(cleanup_error)}",
+                level=LogLevel.ERROR
+            )

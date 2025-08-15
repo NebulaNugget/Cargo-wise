@@ -432,7 +432,77 @@ class CargoWiseCreateConsolidationTool(Marc1Tool):
                 "outputs": {},
                 "error": str(e)
             }
-
+class CargoWiseCreateOrderTool(Marc1Tool):
+    """Tool for creating orders in CargoWise"""
+    name = "cargowise_create_order"
+    description = "Create a new order in CargoWise with buyer, supplier, container return date, and sanction"
+    required_params = {
+        "buyer": str, 
+        "supplier": str, 
+        "container_return_date": str, 
+        "sanction": str
+    }
+    
+    async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
+        """Execute create order tool"""
+        try:
+            # Extract task_id from context
+            task_id = input.context.get("task_id") if input.context else None
+            logger.info(f"CargoWiseCreateOrderTool executing with task_id: {task_id}")
+            
+            # Get parameters
+            buyer = input.parameters["buyer"]
+            supplier = input.parameters["supplier"]
+            container_return_date = input.parameters["container_return_date"]
+            sanction = input.parameters["sanction"]
+            
+            # Execute order creation
+            automation = CargoWiseAutomation(task_id=task_id)
+            result = await automation.create_order(
+                buyer=buyer,
+                supplier=supplier,
+                container_return_date=container_return_date,
+                sanction=sanction
+            )
+            
+            # Handle cancellation case
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "order_created": False,
+                        "buyer": buyer,
+                        "supplier": supplier,
+                        "container_return_date": container_return_date,
+                        "sanction": sanction,
+                        "task_id": task_id,
+                        "cancelled": True
+                    },
+                    "error": result.get("error")
+                }
+            
+            success = result.get("status") == "SUCCESS"
+            return {
+                "status": "COMPLETED" if success else "FAILED",
+                "outputs": {
+                    "order_created": success,
+                    "buyer": buyer,
+                    "supplier": supplier,
+                    "container_return_date": container_return_date,
+                    "sanction": sanction,
+                    "task_id": task_id,
+                    "screenshot_dir": str(automation.screenshot_dir) if hasattr(automation, 'screenshot_dir') else None
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise create order tool")
+            return {
+                "status": "FAILED",
+                "outputs": {},
+                "error": str(e)
+            }
 class CargoWiseSearchBookingTool(Marc1Tool):
     """Tool for searching bookings in CargoWise"""
     name = "cargowise_search_booking"

@@ -31,7 +31,7 @@ class RobotSikuliDriver:
     def __init__(self, image_dir: str = "images", app_path: str=None, timeout: int = None,task_id: Optional[str] = None, screenshot_dir: Optional[str] = None):
         self.image_dir = Path(image_dir)
         self.image_dir.mkdir(exist_ok=True)
-        self.timeout = timeout or int(os.getenv('ROBOT_TIMEOUT', '60'))
+        self.timeout = timeout or int(os.getenv('ROBOT_TIMEOUT', '30'))
         self.app_path = app_path or os.getenv('CARGOWISE_APP_PATH')
       
         self.task_id = task_id
