@@ -135,7 +135,7 @@ Login to cargowise cloud
                 }
             raise
 
-    async def create_order(self, buyer: str, supplier: str, container_return_date: str, sanction: str) -> Dict[str, Any]:
+    async def create_order_part1(self, buyer: str, supplier: str, container_return_date: str, sanction: str, password:str) -> Dict[str, Any]:
         """Create new order"""
         # Check for cancellation before starting
         await self._check_cancellation()
@@ -150,8 +150,7 @@ ${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
 *** Test Cases ***
 Create New Order
     [Documentation]    Create a new order in CargoWise
-    
-    # Click New Order
+   
     Click    ${IMAGE_DIR}/operate-btn.png
     Sleep    3s
     Click    ${IMAGE_DIR}/forwarding-btn.png
@@ -159,7 +158,66 @@ Create New Order
     Click    ${IMAGE_DIR}/order.png
     Sleep    7s
     Click    ${IMAGE_DIR}/new-btn.png
-    Sleep    7s
+    
+    Log    Navigated to new order form successfully
+"""
+        
+        variables = {
+            'PASSWORD':password,
+            'BUYER': buyer,
+            'SUPPLIER': supplier, 
+            'CONTAINER_RETURN_DATE': container_return_date,
+            'SANCTION': sanction,
+            'SCREENSHOT_DIR': str(self.screenshot_dir)
+        }
+        
+        try:
+            result = await self.driver.execute_robot_script(
+                robot_script, 
+                variables=variables,
+                task_id=self.task_id
+            )
+            
+            # Check for cancellation after execution
+            await self._check_cancellation()
+            
+            return {
+                "success": result["success"],
+                "status": "SUCCESS" if result["success"] else "ERROR",
+                "outputs": {
+                    "navigation_completed": result["success"],
+                    "robot_output": result.get("output", ""),
+                    "screenshot_dir": str(self.screenshot_dir)
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            if "cancelled" in str(e).lower():
+                return {
+                    "status": "CANCELED",
+                    "success": False,
+                    "outputs": {},
+                    "error": "Task was cancelled by user"
+                }
+            raise
+
+    async def create_order_part2(self, buyer: str, supplier: str, container_return_date: str, sanction: str, password:str) -> Dict[str, Any]:
+        """Create new order"""
+        # Check for cancellation before starting
+        await self._check_cancellation()
+        robot_script = """
+*** Settings ***
+Library    SikuliLibrary
+
+*** Variables ***
+${IMAGE_DIR}    ${CURDIR}/cargowise_images
+${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
+
+*** Test Cases ***
+Fill Order Details
+    [Documentation]    Fill in order details and save
+    
     Input Text    ${IMAGE_DIR}/order-buyer.png    ${BUYER}
     Sleep    3s
     Input Text    ${IMAGE_DIR}/order-supplier.png    ${SUPPLIER}
@@ -174,16 +232,14 @@ Create New Order
     Sleep    2s
     Click    ${IMAGE_DIR}/order-no2.png
     Sleep    5s
-    Click    ${IMAGE_DIR}/exit-both.png
-    Sleep    7s
-    Click    ${IMAGE_DIR}/close-wisetech.png
-    Click    ${IMAGE_DIR}/close-wisetech.png
-
+    
+    Click    ${IMAGE_DIR}/exit-cargowise-white2.png
     
     Log    Order created successfully
 """
         
         variables = {
+            'PASSWORD':password,
             'BUYER': buyer,
             'SUPPLIER': supplier, 
             'CONTAINER_RETURN_DATE': container_return_date,
@@ -221,6 +277,67 @@ Create New Order
                     "error": "Task was cancelled by user"
                 }
             raise
+
+    async def logout(self, password: str) -> Dict[str, Any]:
+        """Logout from CargoWise"""
+        await self._check_cancellation()
+        robot_script = """
+*** Settings ***
+Library    SikuliLibrary
+
+*** Variables ***
+${IMAGE_DIR}    ${CURDIR}/cargowise_images
+${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
+
+*** Test Cases ***
+Logout from CargoWise
+    [Documentation]    Exit CargoWise application
+    
+    
+    Click    ${IMAGE_DIR}/exit-cargowise-btn.png
+    Sleep    5s
+    Click    ${IMAGE_DIR}/close-wisetech.png
+    Sleep    2s
+    Click    ${IMAGE_DIR}/close-wisetech.png
+    
+    Log    Logged out successfully
+"""
+        
+        variables = {
+            'PASSWORD': password,
+            'SCREENSHOT_DIR': str(self.screenshot_dir)
+        }
+        
+        try:
+            result = await self.driver.execute_robot_script(
+                robot_script, 
+                variables=variables,
+                task_id=self.task_id
+            )
+            
+            await self._check_cancellation()
+            
+            return {
+                "success": result["success"],
+                "status": "SUCCESS" if result["success"] else "ERROR",
+                "outputs": {
+                    "logged_out": result["success"],
+                    "robot_output": result.get("output", ""),
+                    "screenshot_dir": str(self.screenshot_dir)
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            if "cancelled" in str(e).lower():
+                return {
+                    "status": "CANCELED",
+                    "success": False,
+                    "outputs": {},
+                    "error": "Task was cancelled by user"
+                }
+            raise
+
     async def search_shipment_by_housebill(self, housebill: str) -> Dict[str, Any]:
         """Search for shipment by housebill number"""
         # Check for cancellation before starting
@@ -405,52 +522,85 @@ Create New Shipment
     Click    ${IMAGE_DIR}/new-btn.png
     Sleep    10s
 
-    Click    ${IMAGE_DIR}/transport-btn.png
-    Sleep    5s
-
     Input Text    ${IMAGE_DIR}/transport-btn.png    ${TRANSPORT_METHOD}
-    Sleep    5s
-
     
+    
+    Log    Shipment created successfully
+"""
+        
+        variables = {
+            'WEIGHT': weight,
+            'CONSIGNOR': consignor, 
+            'TRANSPORT_METHOD': transport_method,
+            'DESCRIPTION': description,
+            'SCREENSHOT_DIR': str(self.screenshot_dir)
+        }
+        
+        try:
+            result = await self.driver.execute_robot_script(
+                robot_script, 
+                variables=variables,
+                task_id=self.task_id
+            )
+            
+            # Check for cancellation after execution
+            await self._check_cancellation()
+            
+            return {
+                "success": result["success"],  # Add this line
+                "status": "SUCCESS" if result["success"] else "ERROR",
+                "outputs": {
+                    
+                    "robot_output": result.get("output", ""),
+                    "screenshot_dir": str(self.screenshot_dir)
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            if "cancelled" in str(e).lower():
+                return {
+                    "status": "CANCELED",
+                    "success": False,  # Add this line,
+                    "outputs": {},
+                    "error": "Task was cancelled by user"
+                }
+            raise
+
+    async def create_shipment2(self, weight: str, consignor: str, transport_method: str, description: str) -> Dict[str, Any]:
+        """Create new shipment part2"""
+        # Check for cancellation before starting
+        await self._check_cancellation()
+        robot_script = """
+*** Settings ***
+Library    SikuliLibrary
+
+*** Variables ***
+${IMAGE_DIR}    ${CURDIR}/cargowise_images
+${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
+
+*** Test Cases ***
+Create New Shipment
+    [Documentation]    Create a new shipment in CargoWise
+   
 
     Input Text    ${IMAGE_DIR}/consignor-btn.png    ${CONSIGNOR}
-
     Sleep    3s
 
-    # Fill weight
-    Click    ${IMAGE_DIR}/weight-btn.png
-    Sleep    2s
     Input Text    ${IMAGE_DIR}/weight-btn.png    ${WEIGHT}
     Sleep    3s
   
-   
-    # Fill description
-    Click    ${IMAGE_DIR}/description-btn.png
     Input Text    ${IMAGE_DIR}/description-btn.png    ${DESCRIPTION}
     Sleep    3s
     
-    # Save shipment
     Click    ${IMAGE_DIR}/save-close-btn.png
     Sleep    15s
 
     Double Click    ${IMAGE_DIR}/minimise-shipment.png
     Sleep    4s
 
-    Click    ${IMAGE_DIR}/cargowise-exit-white.png
-    Sleep    2s
-
-    
-
-    Click    ${IMAGE_DIR}/exit-cargowise-btn.png
-    Sleep    25s
-
-    Click    ${IMAGE_DIR}/wisecloud-logo2.png
-    Sleep    2s
-    Click    ${IMAGE_DIR}/close-wisetech-white.png
-    Sleep    2s
-    Click    ${IMAGE_DIR}/close-wisetech.png
-    
-   
+    Click    ${IMAGE_DIR}/exit-cargowise-white2.png
+  
     
     Log    Shipment created successfully
 """
@@ -593,12 +743,11 @@ Create New Consolidation
     Sleep    3s
     
     Click    ${IMAGE_DIR}/consolidation-btn.png
-    Sleep    5s
-
-    Click    ${IMAGE_DIR}/new-btn.png
     Sleep    10s
 
-    
+    Click    ${IMAGE_DIR}/new-btn.png
+    Sleep    15s
+
     Input Text    ${IMAGE_DIR}/consolidation-transport.png    ${TRANSPORT}
     Sleep    3s
     
@@ -607,6 +756,86 @@ Create New Consolidation
     
     Input Text    ${IMAGE_DIR}/voyage2.png    ${VOYAGE}
     Sleep    3s
+    
+    Log    Consolidation created successfully
+"""
+        
+        variables = {
+            'TRANSPORT': transport,
+            'CONTAINER_MODE': container_mode,
+            'FIRST_LOAD': first_load,
+            'LAST_LOAD': last_load,
+            'VOYAGE': voyage,
+            'ETD': etd,
+            'ETA': eta,
+            'BOL': bol,
+            'VESSEL': vessel,
+            'SCREENSHOT_DIR': str(self.screenshot_dir)
+        }
+        
+        try:
+            result = await self.driver.execute_robot_script(
+                robot_script, 
+                variables=variables,
+                task_id=self.task_id
+            )
+            
+            # Check for cancellation after execution
+            await self._check_cancellation()
+            
+            return {
+                "success": result["success"],
+                "status": "SUCCESS" if result["success"] else "ERROR",
+                "outputs": {
+                    
+                    "robot_output": result.get("output", ""),
+                    "screenshot_dir": str(self.screenshot_dir)
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            if "cancelled" in str(e).lower():
+                return {
+                    "status": "CANCELED",
+                    "success": False,
+                    "outputs": {},
+                    "error": "Task was cancelled by user"
+                }
+            raise
+
+    # Replace the _check_cancellation method:
+    async def _check_cancellation(self) -> bool:
+        """Check if task has been cancelled using direct database query"""
+        if not self.task_id:
+            return False
+            
+        if TaskStatusUtils.is_task_cancelled(self.task_id):
+            logger.info(f"Task {self.task_id} has been cancelled, stopping automation")
+            # Clean up any running processes
+            await self.driver.cancel_running_tasks()
+            raise Exception("Task was cancelled by user")
+        return False
+   
+    async def create_consolidation2(self, transport: str, container_mode: str, first_load: str, last_load: str, voyage: str, etd: str, eta: str, bol: str, vessel: str) -> Dict[str, Any]:
+        """Create new consolidation part2"""
+        # Check for cancellation before starting
+        await self._check_cancellation()
+        robot_script = """
+*** Settings ***
+Library    SikuliLibrary
+
+*** Variables ***
+${IMAGE_DIR}    ${CURDIR}/cargowise_images
+${SCREENSHOT_DIR}    ${SCREENSHOT_DIR}
+
+*** Test Cases ***
+Create New Consolidation
+    [Documentation]    Create a new consolidation in CargoWise
+    
+    # Click New Consolidation
+    
+    
 
     
     Input Text    ${IMAGE_DIR}/etd2.png    ${ETD}
@@ -620,21 +849,18 @@ Create New Consolidation
     Input Text    ${IMAGE_DIR}/first-load.png    ${FIRST_LOAD}
     Sleep    3s
 
-  
-    
     Input Text    ${IMAGE_DIR}/bol.png    ${BOL}
-    Sleep    5s
+    Sleep    3s
     
     Click    ${IMAGE_DIR}/unlink-vessel.png
     Sleep    3s
     
    
     Click    ${IMAGE_DIR}/save-close-consolidation3.png
-
-    Sleep    10s
-
+    Sleep    15s
     
-    
+    Click    ${IMAGE_DIR}/exit-cargowise-white2.png
+
     Log    Consolidation created successfully
 """
         
@@ -694,34 +920,7 @@ Create New Consolidation
             await self.driver.cancel_running_tasks()
             raise Exception("Task was cancelled by user")
         return False
-    # # Add a new method to support cancellation
-    # async def cancel_automation(self) -> Dict[str, Any]:
-    #     """Cancel any running automation tasks"""
-    #     logger.info("Cancelling CargoWise automation")
-        
-    #     try:
-    #         # Clean up task checker
-    #         if hasattr(self, 'task_checker'):
-    #             self.task_checker.cleanup()
-            
-    #         # Call the driver's cancel method
-    #         result = await self.driver.cancel_running_tasks()
-            
-    #         return {
-    #             "success": result["success"],
-    #             "status": "CANCELED",
-    #             "message": result.get("message", "Automation cancelled"),
-    #             "cancelled_at": datetime.now().isoformat()
-    #         }
-    #     except Exception as e:
-    #         logger.error(f"Error cancelling automation: {str(e)}")
-    #         return {
-    #             "success": False,
-    #             "status": "FAILED",
-    #             "error": f"Failed to cancel automation: {str(e)}",
-    #             "cancelled_at": datetime.now().isoformat()
-    #         }
-    # k
+
     async def search_booking(self, booking_reference: str) -> Dict[str, Any]:
         """Search for existing booking"""
         

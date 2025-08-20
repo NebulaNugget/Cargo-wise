@@ -375,6 +375,47 @@ class CargoWiseCreateShipmentTool(Marc1Tool):
                 "error": str(e)
             }
 
+class CargoWiseCreateShipment2Tool(Marc1Tool):
+    """Tool for creating a shipment in CargoWise part2"""
+    name = "cargowise_create_shipment2"
+    description = "Create a new shipment in CargoWise part2"
+    required_params = {
+        "weight": str,
+        "consignor": str,
+        "transport_method": str,
+        "description": str
+    }
+    
+    async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
+        """Execute create shipment tool part2"""
+        try:
+            automation = CargoWiseAutomation()
+            result = await automation.create_shipment2(
+                weight=input.parameters["weight"],
+                consignor=input.parameters["consignor"],
+                transport_method=input.parameters["transport_method"],
+                description=input.parameters["description"]
+            )
+            
+            return {
+                "status": "COMPLETED" if result["success"] else "FAILED",
+                "outputs": {
+                    "shipment_created": result["success"],
+                    "weight": input.parameters["weight"],
+                    "consignor": input.parameters["consignor"],
+                    "transport_method": input.parameters["transport_method"],
+                    "description": input.parameters["description"]
+                },
+                "error": result.get("error")
+            }
+        except Exception as e:
+            logger.exception("Error in CargoWise create shipment tool part2")
+            return {
+                "status": "FAILED",
+                "outputs": {},
+                "error": str(e)
+            }
+
 class CargoWiseCreateConsolidationTool(Marc1Tool):
     """Tool for creating a consolidation in CargoWise"""
     name = "cargowise_create_consolidation"
@@ -432,11 +473,70 @@ class CargoWiseCreateConsolidationTool(Marc1Tool):
                 "outputs": {},
                 "error": str(e)
             }
+class CargoWiseCreateConsolidation2Tool(Marc1Tool):
+    """Tool for creating a consolidation in CargoWise"""
+    name = "cargowise_create_consolidation2"
+    description = "Create a new consolidation in CargoWise part2"
+    required_params = {
+        "transport": str,
+        "container_mode": str,
+        "first_load": str,
+        "last_load": str,
+        "voyage": str,
+        "etd": str,
+        "eta": str,
+        "bol": str,
+        "vessel": str
+    }
+    
+    async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
+        """Execute create consolidation tool part2"""
+        try:
+            # Extract task_id from context
+            task_id = input.context.get("task_id") if input.context else None
+            automation = CargoWiseAutomation(task_id=task_id)
+            result = await automation.create_consolidation2(
+                transport=input.parameters["transport"],
+                container_mode=input.parameters["container_mode"],
+                first_load=input.parameters["first_load"],
+                last_load=input.parameters["last_load"],
+                voyage=input.parameters["voyage"],
+                etd=input.parameters["etd"],
+                eta=input.parameters["eta"],
+                bol=input.parameters["bol"],
+                vessel=input.parameters["vessel"]
+            )
+            
+            return {
+                "status": "COMPLETED" if result["success"] else "FAILED",
+                "outputs": {
+                    "consolidation_created": result["success"],
+                    "transport": input.parameters["transport"],
+                    "container_mode": input.parameters["container_mode"],
+                    "first_load": input.parameters["first_load"],
+                    "last_load": input.parameters["last_load"],
+                    "voyage": input.parameters["voyage"],
+                    "etd": input.parameters["etd"],
+                    "eta": input.parameters["eta"],
+                    "bol": input.parameters["bol"],
+                    "vessel": input.parameters["vessel"]
+                },
+                "error": result.get("error")
+            }
+        except Exception as e:
+            logger.exception("Error in CargoWise create consolidation tool part2")
+            return {
+                "status": "FAILED",
+                "outputs": {},
+                "error": str(e)
+            }
+
 class CargoWiseCreateOrderTool(Marc1Tool):
     """Tool for creating orders in CargoWise"""
     name = "cargowise_create_order"
     description = "Create a new order in CargoWise with buyer, supplier, container return date, and sanction"
     required_params = {
+        "password":str,
         "buyer": str, 
         "supplier": str, 
         "container_return_date": str, 
@@ -445,12 +545,15 @@ class CargoWiseCreateOrderTool(Marc1Tool):
     
     async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
         """Execute create order tool"""
+        logger.info("=== EXECUTING CargoWiseCreateOrderTool (Part 1) ===")
+        print("=== EXECUTING CargoWiseCreateOrderTool (Part 1) ===")
         try:
             # Extract task_id from context
             task_id = input.context.get("task_id") if input.context else None
             logger.info(f"CargoWiseCreateOrderTool executing with task_id: {task_id}")
             
             # Get parameters
+            password=input.parameters["password"]
             buyer = input.parameters["buyer"]
             supplier = input.parameters["supplier"]
             container_return_date = input.parameters["container_return_date"]
@@ -458,7 +561,8 @@ class CargoWiseCreateOrderTool(Marc1Tool):
             
             # Execute order creation
             automation = CargoWiseAutomation(task_id=task_id)
-            result = await automation.create_order(
+            result = await automation.create_order_part1(
+                password=password,
                 buyer=buyer,
                 supplier=supplier,
                 container_return_date=container_return_date,
@@ -470,6 +574,7 @@ class CargoWiseCreateOrderTool(Marc1Tool):
                 return {
                     "status": "CANCELED",
                     "outputs": {
+                        "password":password,
                         "order_created": False,
                         "buyer": buyer,
                         "supplier": supplier,
@@ -485,6 +590,7 @@ class CargoWiseCreateOrderTool(Marc1Tool):
             return {
                 "status": "COMPLETED" if success else "FAILED",
                 "outputs": {
+                    "password":password,
                     "order_created": success,
                     "buyer": buyer,
                     "supplier": supplier,
@@ -498,6 +604,140 @@ class CargoWiseCreateOrderTool(Marc1Tool):
             
         except Exception as e:
             logger.exception("Error in CargoWise create order tool")
+            return {
+                "status": "FAILED",
+                "outputs": {},
+                "error": str(e)
+            }
+class CargoWiseLogoutTool(Marc1Tool):
+    """Tool for logging out of CargoWise"""
+    name = "cargowise_logout"
+    description = "Logout of CargoWise"
+    required_params = {
+        "password":str
+    }
+    
+    async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
+        """Execute create order tool"""
+        try:
+            # Extract task_id from context
+            task_id = input.context.get("task_id") if input.context else None
+            logger.info(f"CargoWiseLogoutTool executing with task_id: {task_id}")
+            
+            # Get parameters
+            password=input.parameters["password"]
+            
+            
+            # Execute order creation
+            automation = CargoWiseAutomation(task_id=task_id)
+            result = await automation.logout(
+                password=password,
+            )
+            
+            # Handle cancellation case
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "password":password,
+                        
+                        "task_id": task_id,
+                        "cancelled": True
+                    },
+                    "error": result.get("error")
+                }
+            
+            success = result.get("status") == "SUCCESS"
+            return {
+                "status": "COMPLETED" if success else "FAILED",
+                "outputs": {
+                    "password":password,
+                   
+                    "screenshot_dir": str(automation.screenshot_dir) if hasattr(automation, 'screenshot_dir') else None
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise logout tool")
+            return {
+                "status": "FAILED",
+                "outputs": {},
+                "error": str(e)
+            }
+class CargoWiseCreateOrder2Tool(Marc1Tool):
+    """Tool for creating order - Part 2: Fill details and save"""
+    name = "cargowise_create_order2"
+    description = "Fill order details and save in CargoWise"
+    required_params = {
+        "password":str,
+        "buyer": str, 
+        "supplier": str, 
+        "container_return_date": str, 
+        "sanction": str
+    }
+    
+    async def _execute(self, input: ToolNodeInput) -> Dict[str, Any]:
+        """Execute create order tool"""
+        logger.info("=== EXECUTING CargoWiseCreateOrderTool (Part 2) ===")
+        print("=== EXECUTING CargoWiseCreateOrderTool (Part 2) ===")
+        try:
+            # Extract task_id from context
+            task_id = input.context.get("task_id") if input.context else None
+            logger.info(f"CargoWiseCreateOrder2Tool executing with task_id: {task_id}")
+            
+            # Get parameters
+            password=input.parameters["password"]
+            buyer = input.parameters["buyer"]
+            supplier = input.parameters["supplier"]
+            container_return_date = input.parameters["container_return_date"]
+            sanction = input.parameters["sanction"]
+            
+            # Execute order creation
+            automation = CargoWiseAutomation(task_id=task_id)
+            result = await automation.create_order_part2(
+                password=password,
+                buyer=buyer,
+                supplier=supplier,
+                container_return_date=container_return_date,
+                sanction=sanction
+            )
+            
+            # Handle cancellation case
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "password":password,
+                        "order_created": False,
+                        "buyer": buyer,
+                        "supplier": supplier,
+                        "container_return_date": container_return_date,
+                        "sanction": sanction,
+                        "task_id": task_id,
+                        "cancelled": True
+                    },
+                    "error": result.get("error")
+                }
+            
+            success = result.get("status") == "SUCCESS"
+            return {
+                "status": "COMPLETED" if success else "FAILED",
+                "outputs": {
+                    "password":password,
+                    "order_created": success,
+                    "buyer": buyer,
+                    "supplier": supplier,
+                    "container_return_date": container_return_date,
+                    "sanction": sanction,
+                    "task_id": task_id,
+                    "screenshot_dir": str(automation.screenshot_dir) if hasattr(automation, 'screenshot_dir') else None
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise create order 2 tool")
             return {
                 "status": "FAILED",
                 "outputs": {},

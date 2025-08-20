@@ -8,6 +8,7 @@ from app.core.marc1.execution_engine import ExecutionEngine
 from app.core.nlp.intent_parser import IntentParser
 from app.core.marc1.protocol import Marc1Intent
 from app.core.marc1.tool_registry import get_tool_registry
+from app.utils.validation import Validator
 
 logger = logging.getLogger(__name__)
 

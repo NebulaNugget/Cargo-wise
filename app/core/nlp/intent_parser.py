@@ -143,6 +143,7 @@ class IntentParser:
                     r"(?i)new\s+order"
                 ],
                 "param_patterns": {
+                    "password": r"(?i)password[:\s]+([^\s]+)",
                     "buyer": r"(?i)(?:buyer|customer)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
                     "supplier": r"(?i)(?:supplier|vendor)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
                     "container_return_date": r"(?i)(?:container\s+return\s+date|return\s+date)[:\s]+([^,]+?)(?:,|\s+and|\s+with|\s*$)",
@@ -280,12 +281,32 @@ class IntentParser:
                 },
                 {
                     "name": "cargowise_create_order",
-                    "description": "Create a new order in CargoWise",
+                    "description": "Create a new order in CargoWise part1",
                     "parameters": {
+                        "password": intent.parameters.get("password", "${password}"),
                         "buyer": intent.parameters.get("buyer", "${buyer}"),
                         "supplier": intent.parameters.get("supplier", "${supplier}"),
                         "container_return_date": intent.parameters.get("container_return_date", "${container_return_date}"),
                         "sanction": intent.parameters.get("sanction", "${sanction}")
+                    }
+                },
+                {
+                    "name": "cargowise_create_order2",
+                    "description": "Create a new order in CargoWise part2",
+                    "parameters": {
+                        "password": intent.parameters.get("password", "${password}"),
+                        "buyer": intent.parameters.get("buyer", "${buyer}"),
+                        "supplier": intent.parameters.get("supplier", "${supplier}"),
+                        "container_return_date": intent.parameters.get("container_return_date", "${container_return_date}"),
+                        "sanction": intent.parameters.get("sanction", "${sanction}")
+                    }
+                },
+                {
+                    "name": "cargowise_logout",
+                    "description": "Logout of CargoWise",
+                    "parameters": {
+                        "password": intent.parameters.get("password", "${password}"),
+                        
                     }
                 }
             ],
@@ -307,6 +328,24 @@ class IntentParser:
                         "consignor": intent.parameters.get("consignor", "${consignor}"),
                         "transport_method": intent.parameters.get("transport_method", "${transport_method}"),
                         "description": intent.parameters.get("description", "${description}")
+                    }
+                },
+                {
+                    "name": "cargowise_create_shipment2",
+                    "description": "Create a new shipment in CargoWise part2",
+                    "parameters": {
+                        "weight": intent.parameters.get("weight", "${weight}"),
+                        "consignor": intent.parameters.get("consignor", "${consignor}"),
+                        "transport_method": intent.parameters.get("transport_method", "${transport_method}"),
+                        "description": intent.parameters.get("description", "${description}")
+                    }
+                },
+                {
+                    "name": "cargowise_logout",
+                    "description": "Logout of CargoWise",
+                    "parameters": {
+                        "password": intent.parameters.get("password", "${password}"),
+                        
                     }
                 }
             ],
@@ -382,7 +421,7 @@ class IntentParser:
                 },
                 {
                     "name": "cargowise_create_consolidation",
-                    "description": "Create a new consolidation in CargoWise",
+                    "description": "Create a new consolidation in CargoWise part1",
                     "parameters": {
                         "transport": intent.parameters.get("transport", "${transport}"),
                         "container_mode": intent.parameters.get("container_mode", "${container_mode}"),
@@ -393,6 +432,29 @@ class IntentParser:
                         "eta": intent.parameters.get("eta", "${eta}"),
                         "bol": intent.parameters.get("bol", "${bol}"),
                         "vessel": intent.parameters.get("vessel", "${vessel}")
+                    }
+                },
+                {
+                    "name": "cargowise_create_consolidation2",
+                    "description": "Create a new consolidation in CargoWise part2",
+                    "parameters": {
+                        "transport": intent.parameters.get("transport", "${transport}"),
+                        "container_mode": intent.parameters.get("container_mode", "${container_mode}"),
+                        "first_load": intent.parameters.get("first_load", "${first_load}"),
+                        "last_load": intent.parameters.get("last_load", "${last_load}"),
+                        "voyage": intent.parameters.get("voyage", "${voyage}"),
+                        "etd": intent.parameters.get("etd", "${etd}"),
+                        "eta": intent.parameters.get("eta", "${eta}"),
+                        "bol": intent.parameters.get("bol", "${bol}"),
+                        "vessel": intent.parameters.get("vessel", "${vessel}")
+                    }
+                },
+                {
+                    "name": "cargowise_logout",
+                    "description": "Logout of CargoWise",
+                    "parameters": {
+                        "password": intent.parameters.get("password", "${password}"),
+                        
                     }
                 }
             ],

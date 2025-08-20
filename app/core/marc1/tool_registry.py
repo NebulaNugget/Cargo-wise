@@ -5,11 +5,15 @@ from typing import Dict, Type, List, Any, Optional
 from app.ai.tools.cargowise_tools import (
     CargoWiseLoginTool as OldCargoWiseLoginTool,
     CargoWiseSearchBookingTool as OldCargoWiseSearchBookingTool,
-    
+    CargoWiseLogoutTool,
+    CargoWiseCreateOrder2Tool,
+
     CargoWiseUpdateBookingTool,
     CargoWiseCreateShipmentTool,
+    CargoWiseCreateShipment2Tool,
     CargoWiseCreateOrderTool,
     CargoWiseCreateConsolidationTool,
+    CargoWiseCreateConsolidation2Tool,
     CargoWiseSearchShipmentByHousebillTool,
     CargoWiseSearchConsolidationByReferenceNumberTool,
     CargoWiseGenerateReportTool
@@ -201,14 +205,34 @@ class ToolRegistry:
                 },
                 {
                     "name": "cargowise_create_order",
-                    "description": "Create a new order in CargoWise",
+                    "description": "Create a new order in CargoWise part1",
                     "parameters": {
+                        "password": "${password}",
                         "buyer": "${buyer}",
                         "supplier": "${supplier}",
                         "container_return_date": "${container_return_date}",
                         "sanction": "${sanction}"
                     }
-                }
+                },
+                {
+                    "name": "cargowise_create_order2",
+                    "description": "Create a new order in CargoWise part2",
+                    "parameters": {
+                        "password": "${password}",
+                        "buyer": "${buyer}",
+                        "supplier": "${supplier}",
+                        "container_return_date": "${container_return_date}",
+                        "sanction": "${sanction}"
+                    }
+                },
+                {
+                    "name": "cargowise_logout",
+                    "description": "Logout of CargoWise",
+                    "parameters": {
+                        "password": "${password}",
+                       
+                    }
+                },
             ],
             "create_shipment": [
                 {
@@ -228,6 +252,24 @@ class ToolRegistry:
                         "consignor": "${consignor}",
                         "transport_method": "${transport_method}",
                         "description": "${description}"
+                    }
+                },
+                {
+                    "name": "cargowise_create_shipment2",
+                    "description": "Create a new shipment in CargoWise part2",
+                    "parameters": {
+                        "weight": "${weight}",
+                        "consignor": "${consignor}",
+                        "transport_method": "${transport_method}",
+                        "description": "${description}"
+                    }
+                },
+                {
+                    "name": "cargowise_logout",
+                    "description": "Logout of CargoWise",
+                    "parameters": {
+                        "password": "${password}",
+                       
                     }
                 }
             ],
@@ -291,6 +333,29 @@ class ToolRegistry:
                         "etd": "${etd}",
                         "bol": "${bol}",
                         "vessel": "${vessel}"
+                    }
+                },
+                {
+                    "name": "cargowise_create_consolidation2",
+                    "description": "Create a new consolidation in CargoWise part2",
+                    "parameters": {
+                        "transport": "${transport}",
+                        "container_mode": "${container_mode}",
+                        "first_load": "${first_load}",
+                        "last_load": "${last_load}",
+                        "voyage": "${voyage}",
+                        "eta": "${eta}",
+                        "etd": "${etd}",
+                        "bol": "${bol}",
+                        "vessel": "${vessel}"
+                    }
+                },
+                {
+                    "name": "cargowise_logout",
+                    "description": "Logout of CargoWise",
+                    "parameters": {
+                        "password": "${password}",
+                       
                     }
                 }
             ],
@@ -415,9 +480,14 @@ def get_tool_registry():
         registry.register_tool(CargoWiseSearchConsolidationByReferenceNumberTool)
         registry.register_tool(CargoWiseSearchBookingTool)
         registry.register_tool(CargoWiseCreateConsolidationTool)
+        registry.register_tool(CargoWiseCreateConsolidation2Tool)
         registry.register_tool(CargoWiseSearchShipmentByHousebillTool,)
+        registry.register_tool(CargoWiseLogoutTool)
+        registry.register_tool(CargoWiseCreateOrder2Tool)
+
         # Register other existing tools
         registry.register_tool(CargoWiseCreateShipmentTool)
+        registry.register_tool(CargoWiseCreateShipment2Tool)
         registry.register_tool(CargoWiseUpdateBookingTool)
         registry.register_tool(CargoWiseGenerateReportTool)
     

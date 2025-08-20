@@ -284,6 +284,74 @@ class CargoWiseCreateShipmentTool(Marc1Tool):
                 "error": str(e)
             }
 
+class CargoWiseCreateShipment2Tool(Marc1Tool):
+    name = "cargowise_create_shipment2"
+    description = "Create a new shipment in CargoWise part2"
+    required_params = {
+        "weight": str,
+        "consignor": str,
+        "transport_method": str,
+        "description": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        """Execute create shipment using Robot Framework automation"""
+        try:
+            # Get parameters safely
+            parameters = self._get_parameters(input)
+            
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for shipment creation part2")
+            
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            
+            # Execute shipment creation using Robot Framework
+            result = await automation.create_shipment2(
+                weight=parameters["weight"],
+                consignor=parameters["consignor"],
+                transport_method=parameters["transport_method"],
+                description=parameters["description"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "shipment_created": False,
+                        "weight": parameters["weight"],
+                        "consignor": parameters["consignor"],
+                        "transport_method": parameters["transport_method"],
+                        "description": parameters["description"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "shipment_created": result.get("success", False),
+                    "weight": parameters["weight"],
+                    "consignor": parameters["consignor"],
+                    "transport_method": parameters["transport_method"],
+                    "description": parameters["description"]
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise create shipment tool part2")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
 class CargoWiseSearchShipmentByHousebillTool(Marc1Tool):
     name = "cargowise_search_shipment_by_housebill"
     description = "Search for a shipment in CargoWise using housebill number"
@@ -468,11 +536,97 @@ class CargoWiseCreateConsolidationTool(Marc1Tool):
                 "outputs": {},
                 "error": str(e)
             }
+class CargoWiseCreateConsolidation2Tool(Marc1Tool):
+    name = "cargowise_create_consolidation2"
+    description = "Create a new consolidation in CargoWise part 2 with transport, container mode, load details, voyage info, dates, BOL, and vessel"
+    required_params = {
+        "transport": str, 
+        "container_mode": str,
+        "first_load": str,
+        "last_load": str,
+        "voyage": str,
+        "etd": str,
+        "eta": str,
+        "bol": str,
+        "vessel": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        # Get parameters safely
+        try:
+            parameters = self._get_parameters(input)
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for consolidation creation part2")
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            # Execute consolidation creation using Robot Framework
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            result = await automation.create_consolidation2(
+                transport=parameters["transport"],
+                container_mode=parameters["container_mode"],
+                first_load=parameters["first_load"],
+                last_load=parameters["last_load"],
+                voyage=parameters["voyage"],
+                etd=parameters["etd"],
+                eta=parameters["eta"],
+                bol=parameters["bol"],
+                vessel=parameters["vessel"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "consolidation_created": False,
+                        "transport": parameters["transport"],
+                        "container_mode": parameters["container_mode"],
+                        "first_load": parameters["first_load"],
+                        "last_load": parameters["last_load"],
+                        "voyage": parameters["voyage"],
+                        "etd": parameters["etd"],
+                        "eta": parameters["eta"],
+                        "bol": parameters["bol"],
+                        "vessel": parameters["vessel"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "consolidation_created": result.get("success", False),
+                    "transport": parameters["transport"],
+                    "container_mode": parameters["container_mode"],
+                    "first_load": parameters["first_load"],
+                    "last_load": parameters["last_load"],
+                    "voyage": parameters["voyage"],
+                    "etd": parameters["etd"],
+                    "eta": parameters["eta"],
+                    "bol": parameters["bol"],
+                    "vessel": parameters["vessel"],
+                    "consolidation_id": f"CONS-{parameters['voyage']}-{parameters['vessel']}"
+                },
+                "error": result.get("error")
+            }   
+        
+        
+        except Exception as e:
+            logger.exception("Error in CargoWise create consolidation tool part2")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
 
 class CargoWiseCreateOrderTool(Marc1Tool):
     name = "cargowise_create_order"
-    description = "Create a new order in CargoWise"
+    description = "Navigate to new order creation form in CargoWise"
     required_params = {
+        "password":str,
         "buyer": str,
         "supplier": str,
         "container_return_date": str,
@@ -495,7 +649,8 @@ class CargoWiseCreateOrderTool(Marc1Tool):
             automation = CargoWiseAutomation(task_id=input.task_id)
             
             # Execute order creation using Robot Framework
-            result = await automation.create_order(
+            result = await automation.create_order_part1(
+                password=parameters['password'],
                 buyer=parameters["buyer"],
                 supplier=parameters["supplier"],
                 container_return_date=parameters["container_return_date"],
@@ -507,6 +662,7 @@ class CargoWiseCreateOrderTool(Marc1Tool):
                 return {
                     "status": "CANCELED",
                     "outputs": {
+                        "password":parameters["password"],
                         "order_created": False,
                         "buyer": parameters["buyer"],
                         "supplier": parameters["supplier"],
@@ -520,6 +676,7 @@ class CargoWiseCreateOrderTool(Marc1Tool):
             return {
                 "status": "SUCCESS" if result.get("success", False) else "ERROR",
                 "outputs": {
+                    "password":parameters["password"],
                     "order_created": result.get("success", False),
                     "buyer": parameters["buyer"],
                     "supplier": parameters["supplier"],
@@ -531,6 +688,138 @@ class CargoWiseCreateOrderTool(Marc1Tool):
             
         except Exception as e:
             logger.exception("Error in CargoWise create order tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
+class CargoWiseCreateOrder2Tool(Marc1Tool):
+    name = "cargowise_create_order2"
+    description = "Create a new order in CargoWise"
+    required_params = {
+        "password":str,
+        "buyer": str,
+        "supplier": str,
+        "container_return_date": str,
+        "sanction": str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        """Execute create order using Robot Framework automation"""
+        try:
+            # Get parameters safely
+            parameters = self._get_parameters(input)
+            
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for order creation")
+            
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            
+            # Execute order creation using Robot Framework
+            result = await automation.create_order_part2(
+                password=parameters['password'],
+                buyer=parameters["buyer"],
+                supplier=parameters["supplier"],
+                container_return_date=parameters["container_return_date"],
+                sanction=parameters["sanction"]
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "password":parameters["password"],
+                        "order_created": False,
+                        "buyer": parameters["buyer"],
+                        "supplier": parameters["supplier"],
+                        "container_return_date": parameters["container_return_date"],
+                        "sanction": parameters["sanction"]
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "password":parameters["password"],
+                    "order_created": result.get("success", False),
+                    "buyer": parameters["buyer"],
+                    "supplier": parameters["supplier"],
+                    "container_return_date": parameters["container_return_date"],
+                    "sanction": parameters["sanction"]
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise create order tool")
+            return {
+                "status": "ERROR",
+                "outputs": {},
+                "error": str(e)
+            }
+
+class CargoWiseLogoutTool(Marc1Tool):
+    name = "cargowise_logout"
+    description = "Logout from CargoWise"
+    required_params = {
+        "password":str
+    }
+
+    async def _execute(self, input: ToolNodeInput) -> dict:
+        """Execute logout using Robot Framework automation"""
+        try:
+            # Get parameters safely
+            parameters = self._get_parameters(input)
+            
+            # Log that we're using Robot Framework automation
+            logger.info("Using CargoWise Robot Framework automation for logout")
+
+            
+            # Use the Robot Framework automation instead of desktop image tools
+            from app.automation.robot.cargowise_automation import CargoWiseAutomation
+            
+            # Create automation instance
+            automation = CargoWiseAutomation(task_id=input.task_id)
+            
+            # Execute order creation using Robot Framework
+            result = await automation.logout(
+
+                password=parameters['password'],
+                
+            )
+            
+            # Check if task was cancelled
+            if result.get("status") == "CANCELED":
+                return {
+                    "status": "CANCELED",
+                    "outputs": {
+                        "password":parameters["password"],
+                        
+                    },
+                    "error": "Task was cancelled by user"
+                }
+            
+            # Return result in the expected format
+            return {
+                "status": "SUCCESS" if result.get("success", False) else "ERROR",
+                "outputs": {
+                    "password":parameters["password"],
+                    "logout_success": result.get("success", False),
+
+                },
+                "error": result.get("error")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in CargoWise logout tool")
             return {
                 "status": "ERROR",
                 "outputs": {},

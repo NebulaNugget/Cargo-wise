@@ -382,6 +382,8 @@ Run Sikuli Task
     ${{task_end}}=    Get Current Date
     Log To Console    Task completed at ${{task_end}}
     Log    Sikuli task execution completed
+    # Add explicit return to prevent hanging
+    RETURN    ${{True}}
 '''
         return minimal_script
     def _extract_task_content_with_logging(self, robot_script: str) -> str:
